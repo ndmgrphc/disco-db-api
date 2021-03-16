@@ -121,7 +121,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     sql, [req.params.master_id, req.query.format, req.query.country]
   )
 
-  rows = await eagerLoad(connection, rows, 'release_identifier', 'release_id');
+  rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
 
   connection.release()
   return rows
@@ -134,7 +134,7 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
   let collectionKey = `${table}s`
 
   parentRows = parentRows.map(e => {
-    e[collectionKey] = 'TEST';
+    e[collectionKey] = [];
     return e;
   })
 
@@ -148,8 +148,6 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
     
     return a;
   }, {});
-
-  console.log('Is this an array?!?', typeof parentRows);
 
   return parentRows.map(e => {
     e.test = collectionKey;
