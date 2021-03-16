@@ -133,8 +133,8 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
 
   let collectionKey = `${table}s`
 
-  parentRows.forEach(e => {
-    e[collectionKey] = [];
+  parentRows = parentRows.map(e => {
+    e[collectionKey] = ['foo'];
     return e;
   })
 
