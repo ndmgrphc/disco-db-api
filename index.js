@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const VALID_FORMATS = ['Vinyl', 'CD', 'Cassette']
 
 const fastify = require('fastify')()
 
@@ -32,13 +33,16 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
 
   for (const required of ['country', 'format']) {
     if (!req.query[required]) {
-      return reply
-        .code(422)
-        .header('Content-Type', 'application/json; charset=utf-8')
-        .send({ error: `Missing required fields`, errors: [
-          {field: required, error: `Field ${required} is required`}
-        ]})
+      return validationResponse(reply, [
+        {field: required, error: `Field ${required} is required`}
+      ])
     }
+  }
+  
+  if (VALID_FORMATS.indexOf(req.query.format) < 0) {
+    return validationResponse(reply, [
+      {field: required, error: `Field format= must be one of ${VALID_FORMATS.join(', ')}`}
+    ])
   }
 
   const baseSQL = `select r.master_id as id, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
@@ -86,3 +90,11 @@ fastify.listen(process.env.PORT, "0.0.0.0", err => {
   if (err) throw err
   console.log(`server listening on ${process.env.PORT}`)
 })
+
+function validationResponse(reply, errors) {
+  return reply
+    .code(422)
+    .header('Content-Type', 'application/json; charset=utf-8')
+    .send({ error: `Missing required fields`, errors: errors})
+  }
+}
