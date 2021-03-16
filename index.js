@@ -129,7 +129,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 
 async function eagerLoad(connection, parentRows, table, foreignKey) {
   let ids = parentRows.map(e => e.id);
-  const [rows, fields] = await connection.query(`select * from \`${table}\ where id IN(?);`, [ids])
+  const [rows, fields] = await connection.query(`select * from \`${table}\` where id IN(?);`, [ids])
 
   let collectionKey = `${table}s`
 
