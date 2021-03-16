@@ -149,6 +149,7 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
   }, {});
 
   return parentRows.map(e => {
+    e.test = 'foo';
     e[collectionKey] = keyedByForeign[e.id]
     return e;
   })
