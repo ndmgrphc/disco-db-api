@@ -129,13 +129,12 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 
 async function eagerLoad(connection, parentRows, table, foreignKey) {
   let ids = parentRows.map(e => e.id);
-  const [rows, fields] = await connection.query(`select * from \`${table}\` where id IN(?);`, [ids])
+  const [rows, fields] = await connection.query(`select * from \`${table}\` where ${foreignKey} IN(?);`, [ids])
 
   let collectionKey = `${table}s`
 
-  parentRows = parentRows.map(e => {
+  parentRows.forEach(e => {
     e[collectionKey] = [];
-    return e;
   })
 
   let keyedByForeign = rows.reduce((a, e) => {
@@ -150,7 +149,6 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
   }, {});
 
   return parentRows.map(e => {
-    e.test = collectionKey;
     e[collectionKey] = keyedByForeign[e.id]
     return e;
   })
