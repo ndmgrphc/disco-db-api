@@ -41,7 +41,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   
   if (VALID_FORMATS.indexOf(req.query.format) < 0) {
     return validationResponse(reply, [
-      {field: required, error: `Field format= must be one of ${VALID_FORMATS.join(', ')}`}
+      {field: 'format', error: `Value must be one of ${VALID_FORMATS.join(', ')}`}
     ])
   }
 
