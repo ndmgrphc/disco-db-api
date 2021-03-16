@@ -131,6 +131,8 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
   let ids = parentRows.map(e => e.id);
   const [rows, fields] = await connection.query(`select * from \`${table}\` where id IN(?);`, [ids])
 
+  return rows;
+
   let collectionKey = `${table}s`
 
   let keyedByForeign = rows.reduce((a, e) => {
