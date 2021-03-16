@@ -1,0 +1,12 @@
+{
+  "name": "disco-db-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github-ndmgrphc:ndmgrphc/disco-db-api.git",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "fastify": "^3.14.0",
+    "fastify-mysql": "^2.1.0"
+  }
+}
