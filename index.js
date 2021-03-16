@@ -30,6 +30,17 @@ fastify.get('/artists', async (req, reply) => {
 fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
+  for (const required of ['country', 'format']) {
+    if (!req.query[required]) {
+      return reply
+        .code(422)
+        .header('Content-Type', 'application/json; charset=utf-8')
+        .send({ error: `Missing required fields`, errors: [
+          {field: required, error: `Field ${required} is required`}
+        ]})
+    }
+  }
+
   const baseSQL = `select r.master_id as id, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
