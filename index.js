@@ -28,6 +28,9 @@ fastify.get('/artists', async (req, reply) => {
   return rows
 })
 
+/**
+ * Get masters for artist
+ */
 fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
@@ -78,6 +81,48 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   const [rows, fields] = await connection.query(
     query[0], query[1],
   )
+  connection.release()
+  return rows
+})
+
+/**
+ * Get releases for master
+ */
+
+fastify.get('/masters/:master_id/releases', async (req, reply) => {
+
+  const connection = await fastify.mysql.getConnection()
+
+  for (const required of ['country', 'format']) {
+    if (!req.query[required]) {
+      return validationResponse(reply, [
+        {field: required, error: `Field ${required} is required`}
+      ])
+    }
+  }
+  
+  if (VALID_FORMATS.indexOf(req.query.format) < 0) {
+    return validationResponse(reply, [
+      {field: 'format', error: `Value must be one of ${VALID_FORMATS.join(', ')}`}
+    ])
+  }
+
+  const sql = `select r.id as id, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+  inner join \`master\` m on ma.master_id = m.id
+  inner join \`release\` r on r.master_id = m.id
+  inner join release_format rf on r.id = rf.release_id
+  inner join artist a on a.id = ma.artist_id
+  WHERE 
+  ma.master_id = ? 
+  AND rf.name = ?
+  AND r.country = ? limit 50;`
+
+  const [rows, fields] = await connection.query(
+    sql, [req.params.master_id]
+  )
+
+
+
   connection.release()
   return rows
 })
