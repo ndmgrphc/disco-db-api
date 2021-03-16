@@ -121,13 +121,34 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     sql, [req.params.master_id, req.query.format, req.query.country]
   )
 
-  let ids = rows.map(e => e.id);
-
-  
+  rows = await eagerLoad(connection, rows, 'release_identifier', 'release_id');
 
   connection.release()
   return rows
 })
+
+async function eagerLoad(connection, parentRows, table, foreignKey) {
+  let ids = parentRows.map(e => e.id);
+  const [rows, fields] = connection.query(`select * from \`${table}\ where id IN(?);`, [ids])
+
+  let collectionKey = `${table}s`
+
+  let keyedByForeign = rows.reduce((a, e) => {
+    
+    if (!a[e[foreignKey]]) {
+      a[e[foreignKey]] = [];
+    }
+
+    a[e[foreignKey]].push(e);
+    
+    return a;
+  }, {});
+
+  return parentRows.map(e => {
+    e[collectionKey] = keyedByForeign[e.id]
+    return e;
+  })
+}
 
 fastify.get('/', async (req, reply) => {
   return 'Not an endpoint';
