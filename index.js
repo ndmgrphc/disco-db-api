@@ -117,7 +117,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   AND rf.name = ?
   AND r.country = ? limit 50;`
 
-  const [rows, fields] = await connection.query(
+  let [rows, fields] = await connection.query(
     sql, [req.params.master_id, req.query.format, req.query.country]
   )
 
@@ -129,7 +129,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 
 async function eagerLoad(connection, parentRows, table, foreignKey) {
   let ids = parentRows.map(e => e.id);
-  const [rows, fields] = await connection.query(`select * from \`${table}\` where id IN(?);`, [ids])
+  let [rows, fields] = await connection.query(`select * from \`${table}\` where id IN(?);`, [ids])
 
   let collectionKey = `${table}s`
 
