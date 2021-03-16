@@ -121,7 +121,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     sql, [req.params.master_id, req.query.format, req.query.country]
   )
 
-  rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
+  if (rows.length > 0)
+    rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
 
   connection.release()
   return rows
