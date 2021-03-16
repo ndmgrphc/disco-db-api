@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+
 const fastify = require('fastify')()
 
 fastify.register(require('fastify-mysql'), {
@@ -30,7 +31,7 @@ fastify.get('/', async (req, reply) => {
   return 'Not an endpoint';
 })
 
-fastify.listen(process.env.PORT, err => {
+fastify.listen(process.env.PORT, "0.0.0.0", err => {
   if (err) throw err
-  console.log(`server listening on ${fastify.server.address().port}`)
+  console.log(`server listening on ${process.env.PORT}`)
 })
