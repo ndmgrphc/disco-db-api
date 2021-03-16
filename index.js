@@ -118,10 +118,12 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   AND r.country = ? limit 50;`
 
   const [rows, fields] = await connection.query(
-    sql, [req.params.master_id]
+    sql, [req.params.master_id, req.query.format, req.query.country]
   )
 
+  let ids = rows.map(e => e.id);
 
+  
 
   connection.release()
   return rows
