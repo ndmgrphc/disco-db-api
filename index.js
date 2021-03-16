@@ -96,5 +96,4 @@ function validationResponse(reply, errors) {
     .code(422)
     .header('Content-Type', 'application/json; charset=utf-8')
     .send({ error: `Missing required fields`, errors: errors})
-  }
 }
