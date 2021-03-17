@@ -210,6 +210,24 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
   })
 }
 
+/**
+ * Release countries, for export purposes, very slow
+ */
+
+fastify.get('/countries', async (req, reply) => {
+  const connection = await fastify.mysql.getConnection()
+
+  const sql = `select country, count(id) as country_count from \`release\` group by country order by country_count desc;`
+
+  let [rows, fields] = await connection.query(
+    sql, []
+  )
+
+  connection.release()
+
+  return rows
+})
+
 fastify.get('/', async (req, reply) => {
   return 'Not an endpoint';
 })
