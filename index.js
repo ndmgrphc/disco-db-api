@@ -40,7 +40,7 @@ fastify.get('/artists', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
   const [rows, fields] = await connection.query(
-    'SELECT id, name FROM artist WHERE name = ? limit 1', [req.params.id],
+    'SELECT id, name FROM artist WHERE id = ? limit 1', [req.params.id],
   )
 
   connection.release()
@@ -170,8 +170,6 @@ fastify.get('/releases/:id', async (req, reply) => {
   let [rows, fields] = await connection.query(
     sql, [req.params.id]
   )
-
-  
 
   if (!rows[0]) {
     connection.release()
