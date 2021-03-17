@@ -72,7 +72,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     ])
   }
 
-  const baseSQL = `select r.master_id as id, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+  const baseSQL = `select r.master_id as id, rf.name as format, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
   inner join release_format rf on r.id = rf.release_id
@@ -131,7 +131,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     ])
   }
 
-  const sql = `select r.id as id, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+  const sql = `select r.id as id, m.year, r.country, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
   inner join release_format rf on r.id = rf.release_id
@@ -159,7 +159,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 fastify.get('/releases/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
-  const sql = `select r.id as id, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+  const sql = `select r.id as id, m.year, r.country, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
   inner join release_format rf on r.id = rf.release_id
