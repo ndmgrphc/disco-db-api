@@ -166,7 +166,7 @@ fastify.get('/releases/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
   const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, r.master_id as master_id, 
-  , ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+   ma.artist_id, a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
   inner join artist a on a.id = ma.artist_id
