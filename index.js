@@ -183,7 +183,7 @@ fastify.get('/releases/:id', async (req, reply) => {
   }
 
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
-  rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
+  rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id')
   
   connection.release()
