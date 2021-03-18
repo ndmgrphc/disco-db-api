@@ -145,8 +145,10 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     sql, [req.params.master_id, req.query.format, req.query.country]
   )
 
-  if (rows.length > 0)
+  if (rows.length > 0) {
     rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
+    rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
+  }
 
   connection.release()
   return rows
@@ -177,6 +179,7 @@ fastify.get('/releases/:id', async (req, reply) => {
   }
 
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
+  rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
   
   connection.release()
 
