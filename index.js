@@ -131,14 +131,17 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     ])
   }
 
-  const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+  const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, 
+  r.master_id as master_id, 
+  ma.artist_id, 
+  a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
   inner join release_format rf on r.id = rf.release_id
   inner join artist a on a.id = ma.artist_id
   WHERE 
   ma.master_id = ? 
-  AND rf.name = ?
+  AND r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)
   AND r.country = ? limit 50;`
 
   let [rows, fields] = await connection.query(
@@ -148,6 +151,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   if (rows.length > 0) {
     rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
     rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
+    rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id');
   }
 
   connection.release()
@@ -161,10 +165,10 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 fastify.get('/releases/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
-  const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, r.master_id as master_id, rf.qty, rf.descriptions, rf.name as format, ma.artist_id, a.name as artist_name, m.title from master_artist ma 
+  const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, r.master_id as master_id, 
+  , ma.artist_id, a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
-  inner join release_format rf on r.id = rf.release_id
   inner join artist a on a.id = ma.artist_id
   WHERE 
   r.id = ? limit 1;`
@@ -180,6 +184,7 @@ fastify.get('/releases/:id', async (req, reply) => {
 
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
+  rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id')
   
   connection.release()
 
