@@ -137,7 +137,6 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   a.name as artist_name, m.title from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
-  inner join release_format rf on r.id = rf.release_id
   inner join artist a on a.id = ma.artist_id
   WHERE 
   ma.master_id = ? 
