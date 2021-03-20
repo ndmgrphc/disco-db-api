@@ -58,7 +58,7 @@ fastify.get('/artists', async (req, reply) => {
 fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
-  for (const required of ['country', 'format']) {
+  for (const required of ['format']) {
     if (!req.query[required]) {
       return validationResponse(reply, [
         {field: required, error: `Field ${required} is required`}
@@ -117,7 +117,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 
   const connection = await fastify.mysql.getConnection()
 
-  for (const required of ['country', 'format']) {
+  for (const required of ['format']) {
     if (!req.query[required]) {
       return validationResponse(reply, [
         {field: required, error: `Field ${required} is required`}
@@ -131,6 +131,27 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     ])
   }
 
+  let params = [
+    [`ma.master_id = ?`, req.params.master_id]
+  ];
+
+  if (req.query.country) {
+    params.push([`r.country = ?`, `${req.query.country}`]);
+  }
+
+  if (req.query.release_year) {
+    let releaseYearParts = req.query.release_year.split(',');
+    if (releaseYearParts[1]) {
+      params.push([`r.release_year >= ?`, `${releasedParts[0]}`]);
+      params.push([`r.release_year <= ?`, `${releasedParts[1]}`]);
+    } else {
+      params.push([`r.release_year = ?`, `${releasedParts[0]}`]);
+    }
+  }
+
+  // format
+  params.push(`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format)
+
   const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, 
   r.master_id as master_id, 
   ma.artist_id, 
@@ -139,9 +160,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   inner join \`release\` r on r.master_id = m.id
   inner join artist a on a.id = ma.artist_id
   WHERE 
-  ma.master_id = ? 
-  AND r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)
-  AND r.country = ? limit 50;`
+  ${params.map(e => e[0]).join(' AND ')}
+  limit 100 order by r.released desc;`
 
   let [rows, fields] = await connection.query(
     sql, [req.params.master_id, req.query.format, req.query.country]
