@@ -150,7 +150,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   // format
-  params.push(`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format)
+  params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
 
   const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, 
   r.master_id as master_id, r.release_year,
@@ -163,7 +163,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   ${params.map(e => e[0]).join(' AND ')}
   order by r.release_year desc limit 100;`
 
-  return sql;
+  //return sql;
 
   let [rows, fields] = await connection.query(
     sql, params.map(e => e[1])
