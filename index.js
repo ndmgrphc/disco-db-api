@@ -95,7 +95,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
 
-  let sql = `${baseSQL} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id LIMIT 50;`
+  let sql = `${baseSQL} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
 
   let query = [
     sql,
