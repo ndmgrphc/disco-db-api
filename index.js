@@ -72,12 +72,13 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     ])
   }
 
-  const baseSQL = `select r.master_id as id, rf.name as format, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
+  const baseSQL = `select r.master_id as id, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
-  inner join release_format rf on r.id = rf.release_id
   inner join artist a on a.id = ma.artist_id
   WHERE`
+
+  // inner join release_format rf on r.id = rf.release_id
 
   let params = [
     [`ma.artist_id = ?`, req.params.artist_id]
@@ -88,7 +89,8 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   }
 
   if (req.query.format) {
-    params.push([`rf.name = ?`, `${req.query.format}`]);
+    //params.push([`rf.name = ?`, `${req.query.format}`]);
+    params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
   }
 
   if (req.query.country) {
