@@ -164,7 +164,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   order by r.release_year desc limit 100;`
 
   let [rows, fields] = await connection.query(
-    sql, [req.params.master_id, req.query.format, req.query.country]
+    sql, params.map(e => e[1])
   )
 
   if (rows.length > 0) {
