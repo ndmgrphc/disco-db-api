@@ -163,6 +163,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   ${params.map(e => e[0]).join(' AND ')}
   order by r.release_year desc limit 100;`
 
+  return sql;
+
   let [rows, fields] = await connection.query(
     sql, params.map(e => e[1])
   )
