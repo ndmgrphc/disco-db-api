@@ -93,6 +93,16 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
   }
 
+  if (req.query.release_year) {
+    let releaseYearParts = req.query.release_year.split(',');
+    if (releaseYearParts[1]) {
+      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
+      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
+    } else {
+      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
+    }
+  }
+
   if (req.query.country) {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
@@ -144,10 +154,10 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   if (req.query.release_year) {
     let releaseYearParts = req.query.release_year.split(',');
     if (releaseYearParts[1]) {
-      params.push([`r.release_year >= ?`, `${releasedParts[0]}`]);
-      params.push([`r.release_year <= ?`, `${releasedParts[1]}`]);
+      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
+      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
     } else {
-      params.push([`r.release_year = ?`, `${releasedParts[0]}`]);
+      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
     }
   }
 
