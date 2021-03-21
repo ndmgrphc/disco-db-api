@@ -72,12 +72,12 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     ])
   }
 
-  const baseSQL = `select m.id as id, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
+  const baseSQL = `select r.master_id as id, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
+  inner join \`release\` r on r.master_id = m.id
   inner join artist a on a.id = ma.artist_id
   WHERE`
 
-  //inner join \`release\` r on r.master_id = m.id
   // inner join release_format rf on r.id = rf.release_id
 
   let params = [
@@ -85,7 +85,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   ];
 
   if (req.query.search) {
-    params.push([`m.title like ?`, `${req.query.search}%`]);
+    params.push([`r.title like ?`, `${req.query.search}%`]);
   }
 
   if (req.query.format) {
@@ -108,6 +108,8 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   }
 
   let sql = `${baseSQL} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
+
+  return sql;
 
   let query = [
     sql,
