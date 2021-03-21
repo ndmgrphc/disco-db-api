@@ -125,7 +125,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   // add master_id IN()
   params[`m.id IN(?)`, prefetchRows.map(e => e.master_id)]
 
-  let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(r.master_id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
+  let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(m.id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
 
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
