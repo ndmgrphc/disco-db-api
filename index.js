@@ -72,7 +72,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     ])
   }
 
-  const baseSQL = `select r.master_id as id, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
+  const baseSQL = `select m.id as id, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join artist a on a.id = ma.artist_id
   WHERE`
