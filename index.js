@@ -109,7 +109,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   );
 
   if (req.query.debugPrefetch) {
-    return [prefetchSql.replace("\n", ""), prefetchParams.map(e => e[1]), prefetchRows];
+    return [prefetchSql.replace("\n", ""), prefetchParams.map(e => e[1]), prefetchRows.map(e => e.master_id)];
   }
   
   if (prefetchRows.length === 0) {
