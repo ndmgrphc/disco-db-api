@@ -109,23 +109,20 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
 
-  let sql = `${baseSQL.replace('%COLUMNS%', resultColumns)} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
-
-  let query = [
-    sql,
-    params.map(e => e[1])
-  ]
-
   let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(r.master_id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id, m.year order by m.year;`
 
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
   );
 
+  let sql = `${baseSQL.replace('%COLUMNS%', resultColumns)} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
+
   const [rows, fields] = await connection.query(
-    query[0], query[1],
+    sql, params.map(e => e[1]),
   )
+  
   connection.release()
+
   return {report: reportRows, data: rows}
 })
 
