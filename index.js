@@ -94,18 +94,6 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     params.push([`rf.name = ?`, req.query.format])
   }
 
-  // Pre-fetch master_id list for everything that satisfies query
-  let prefetchSql = `select r.master_id from \`release\` r 
-  inner join release_format rf on rf.release_id = r.id 
-  inner join master_artist ma on ma.master_id = r.master_id
-  where ${params.map(e => e[0]).join(' AND ')} group by r.master_id;`;
-
-  const [prefetchRows] = await connection.query(
-    prefetchSql, params.map(e => e[1]),
-  );
-  
-  return prefetchRows;
-
   if (req.query.year) {
     let masterYearParts = req.query.year.split(',');
     if (masterYearParts[1]) {
@@ -119,6 +107,23 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   if (req.query.country) {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
+
+  // Pre-fetch master_id list
+  let prefetchSql = `select r.master_id from \`release\` r 
+  inner join release_format rf on rf.release_id = r.id 
+  inner join master_artist ma on ma.master_id = r.master_id
+  where ${params.map(e => e[0]).join(' AND ')} group by r.master_id;`;
+
+  const [prefetchRows] = await connection.query(
+    prefetchSql, params.map(e => e[1]),
+  );
+  
+  if (prefetchRows.rows.length === 0) {
+    return {report: [], data: []}
+  }
+
+  // add master_id IN()
+  params[`m.id IN(?)`, prefetchRows.map(e => e.master_id)]
 
   let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(r.master_id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
 
