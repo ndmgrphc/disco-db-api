@@ -72,16 +72,6 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     ])
   }
 
-  let resultColumns = `r.master_id as id, ma.artist_id, a.name as artist_name, m.title, m.year`;
-
-  const baseSQL = `select %COLUMNS% from master_artist ma 
-  inner join \`master\` m on ma.master_id = m.id
-  inner join artist a on a.id = ma.artist_id
-  WHERE`
-
-  // inner join release_format rf on r.id = rf.release_id
-  // inner join \`release\` r on r.master_id = m.id
-
   let params = [
     [`ma.artist_id = ?`, req.params.artist_id]
   ];
@@ -113,8 +103,6 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   inner join master m on m.id = r.master_id
   where ${prefetchParams.map(e => e[0]).join(' AND ')} group by r.master_id;`;
 
-  return [prefetchSql, prefetchParams.map(e => e[1])];
-
   const [prefetchRows] = await connection.query(
     prefetchSql, prefetchParams.map(e => e[1]),
   );
@@ -123,10 +111,19 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     return {report: [], data: []}
   }
 
+  let resultColumns = `m.id as id, ma.artist_id, a.name as artist_name, m.title, m.year`;
+
+  const baseSQL = `select %COLUMNS% from master_artist ma 
+  inner join \`master\` m on ma.master_id = m.id
+  inner join artist a on a.id = ma.artist_id
+  WHERE`
+  
   // add master_id IN()
   params[`m.id IN(?)`, prefetchRows.map(e => e.master_id)]
 
   let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(m.id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
+
+  return [reportSql, params.map(e => e[1])];
 
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
