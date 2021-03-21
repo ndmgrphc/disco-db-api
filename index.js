@@ -118,7 +118,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     prefetchSql, params.map(e => e[1]),
   );
   
-  if (prefetchRows.rows.length === 0) {
+  if (prefetchRows.length === 0) {
     return {report: [], data: []}
   }
 
