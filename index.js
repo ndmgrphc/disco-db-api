@@ -127,13 +127,11 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
 
   let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(r.master_id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
 
-  return reportSql;
-
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
   );
 
-  let sql = `${baseSQL.replace('%COLUMNS%', resultColumns)} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
+  let sql = `${baseSQL.replace('%COLUMNS%', resultColumns)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.id order by m.year desc LIMIT 100;`
 
   const [rows, fields] = await connection.query(
     sql, params.map(e => e[1]),
