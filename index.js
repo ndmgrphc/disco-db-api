@@ -104,7 +104,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   where ${prefetchParams.map(e => e[0]).join(' AND ')} group by r.master_id;`;
 
   if (req.query.debugPrefetch) {
-    return [prefetchSql, prefetchParams.map(e => e[1])];
+    return [prefetchSql.replace("\n", ""), prefetchParams.map(e => e[1])];
   }
 
   const [prefetchRows] = await connection.query(
