@@ -76,11 +76,11 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
 
   const baseSQL = `select %COLUMNS% from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
-  inner join \`release\` r on r.master_id = m.id
   inner join artist a on a.id = ma.artist_id
   WHERE`
 
   // inner join release_format rf on r.id = rf.release_id
+  // inner join \`release\` r on r.master_id = m.id
 
   let params = [
     [`ma.artist_id = ?`, req.params.artist_id]
@@ -91,9 +91,20 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   }
 
   if (req.query.format) {
-    //params.push([`rf.name = ?`, `${req.query.format}`]);
-    params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
+    params.push([`rf.name = ?`, req.query.format])
   }
+
+  // Pre-fetch master_id list for everything that satisfies query
+  let prefetchSql = `select r.master_id from \`release\` r 
+  inner join release_format rf on rf.release_id = r.id 
+  inner join master_artist ma on ma.artist_id
+  where ${params.map(e => e[0]).join(' AND ')} group by r.master_id)`;
+
+  const [prefetchRows] = await connection.query(
+    prefetchSql, params.map(e => e[1]),
+  );
+  
+  return prefetchRows;
 
   if (req.query.year) {
     let masterYearParts = req.query.year.split(',');
