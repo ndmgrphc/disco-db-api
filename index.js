@@ -85,7 +85,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   ];
 
   if (req.query.search) {
-    params.push([`r.title like ?`, `${req.query.search}%`]);
+    params.push([`r.title like ?`, `%${req.query.search}%`]);
   }
 
   if (req.query.format) {
@@ -108,8 +108,6 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   }
 
   let sql = `${baseSQL} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
-
-  //return sql;
 
   let query = [
     sql,
