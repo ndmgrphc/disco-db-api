@@ -126,7 +126,8 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   // add master_id IN()
   params.push([`m.id IN(?)`, prefetchRows.map(e => e.master_id)])
 
-  let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(m.id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
+  let reportParams = params.filter(e => e[0].indexOf('m.year') < 0);
+  let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(m.id) as year_count`)} ${reportParams.map(e => e[0]).join(' AND ')} GROUP BY m.year order by m.year;`
 
   //return [reportSql, params.map(e => e[1])];
   if (req.query.debugReport) {
