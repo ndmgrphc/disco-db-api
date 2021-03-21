@@ -98,7 +98,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   let prefetchSql = `select r.master_id from \`release\` r 
   inner join release_format rf on rf.release_id = r.id 
   inner join master_artist ma on ma.artist_id
-  where ${params.map(e => e[0]).join(' AND ')} group by r.master_id)`;
+  where ${params.map(e => e[0]).join(' AND ')} group by r.master_id;`;
 
   const [prefetchRows] = await connection.query(
     prefetchSql, params.map(e => e[1]),
