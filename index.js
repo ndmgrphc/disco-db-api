@@ -72,7 +72,9 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     ])
   }
 
-  const baseSQL = `select r.master_id as id, ma.artist_id, a.name as artist_name, m.title, m.year from master_artist ma 
+  let resultColumns = `r.master_id as id, ma.artist_id, a.name as artist_name, m.title, m.year`;
+
+  const baseSQL = `select %COLUMNS% from master_artist ma 
   inner join \`master\` m on ma.master_id = m.id
   inner join \`release\` r on r.master_id = m.id
   inner join artist a on a.id = ma.artist_id
@@ -93,13 +95,13 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
   }
 
-  if (req.query.release_year) {
-    let releaseYearParts = req.query.release_year.split(',');
-    if (releaseYearParts[1]) {
-      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
-      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
+  if (req.query.year) {
+    let masterYearParts = req.query.year.split(',');
+    if (masterYearParts[1]) {
+      params.push([`m.year >= ?`, `${masterYearParts[0]}`]);
+      params.push([`m.year <= ?`, `${masterYearParts[1]}`]);
     } else {
-      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
+      params.push([`m.year = ?`, `${masterYearParts[0]}`]);
     }
   }
 
@@ -107,18 +109,24 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
 
-  let sql = `${baseSQL} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
+  let sql = `${baseSQL.replace('%COLUMNS%', resultColumns)} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id order by m.year desc LIMIT 100;`
 
   let query = [
     sql,
     params.map(e => e[1])
   ]
 
+  let reportSql = `${baseSQL.replace('%COLUMNS%', `m.year, count(r.master_id) as year_count`)} ${params.map(e => e[0]).join(' AND ')} GROUP BY r.master_id, m.year order by m.year;`
+
+  const [reportRows, reportFields] = await connection.query(
+    reportSql, params.map(e => e[1])
+  );
+
   const [rows, fields] = await connection.query(
     query[0], query[1],
   )
   connection.release()
-  return rows
+  return {report: reportRows, data: rows}
 })
 
 /**
