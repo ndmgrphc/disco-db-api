@@ -87,11 +87,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   ];
 
   if (req.query.search) {
-    params.push([`r.title like ?`, `%${req.query.search}%`]);
-  }
-
-  if (req.query.format) {
-    params.push([`rf.name = ?`, req.query.format])
+    params.push([`m.title like ?`, `%${req.query.search}%`]);
   }
 
   if (req.query.year) {
@@ -104,18 +100,20 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     }
   }
 
+  // Pre-fetch master_id list
+
+  let prefetchParams = params.concat([[`rf.name = ?`, req.query.format]]);
   if (req.query.country) {
-    params.push([`r.country = ?`, `${req.query.country}`]);
+    prefetchParams.push([`r.country = ?`, `${req.query.country}`])
   }
 
-  // Pre-fetch master_id list
   let prefetchSql = `select r.master_id from \`release\` r 
   inner join release_format rf on rf.release_id = r.id 
   inner join master_artist ma on ma.master_id = r.master_id
-  where ${params.map(e => e[0]).join(' AND ')} group by r.master_id;`;
+  where ${prefetchParams.map(e => e[0]).join(' AND ')} group by r.master_id;`;
 
   const [prefetchRows] = await connection.query(
-    prefetchSql, params.map(e => e[1]),
+    prefetchSql, prefetchParams.map(e => e[1]),
   );
   
   if (prefetchRows.length === 0) {
