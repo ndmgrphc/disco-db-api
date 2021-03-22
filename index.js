@@ -191,6 +191,17 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   // format
   params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
 
+
+  // release_year report
+  const reportSql = `select count(r.id) as release_count, r.release_year FROM \`release\` r
+  WHERE ${params.map(e => e[0]).join(' AND ')}
+  group by r.release_year
+  order by release_count desc limit 100;`
+
+  const [reportRows, reportFields] = await connection.query(
+    reportSql, params.map(e => e[1])
+  );
+
   const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.release_year
   FROM \`release\` r
   WHERE 
@@ -211,7 +222,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   connection.release()
-  return rows
+  
+  return {report: reportRows, data: rows}
 })
 
 /**
