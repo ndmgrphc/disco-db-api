@@ -171,7 +171,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   let params = [
-    [`ma.master_id = ?`, req.params.master_id]
+    [`r.master_id = ?`, req.params.master_id]
   ];
 
   if (req.query.country) {
