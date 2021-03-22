@@ -178,23 +178,33 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
 
+  let nullYear = false;
   if (req.query.year) {
-    let releaseYearParts = req.query.year.split(',');
-    if (releaseYearParts[1]) {
-      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
-      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
+    if (req.query.year === 'NULL') {
+      nullYear = true;
     } else {
-      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
+      let releaseYearParts = req.query.year.split(',');
+      if (releaseYearParts[1]) {
+        params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
+        params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
+      } else {
+        params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
+      }
     }
   }
 
   // format
   params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
 
+  let nullYearClause = '';
+  if (nullYear) {
+    nullYearClause = `AND r.release_year IS NULL`
+  }
 
   // release_year report
   const reportSql = `select count(r.id) as year_count, r.release_year as year FROM \`release\` r
   WHERE ${params.map(e => e[0]).join(' AND ')}
+  ${nullYearClause}
   group by r.release_year
   order by year_count desc limit 200;`
 
@@ -206,6 +216,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   FROM \`release\` r
   WHERE 
   ${params.map(e => e[0]).join(' AND ')}
+  ${nullYearClause}
   group by r.id
   order by r.release_year asc limit 100;`
 
