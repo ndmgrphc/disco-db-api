@@ -207,7 +207,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   WHERE 
   ${params.map(e => e[0]).join(' AND ')}
   group by r.id
-  order by r.year limit 100;`
+  order by r.release_year asc limit 100;`
 
   //return sql;
 
