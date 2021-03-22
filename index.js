@@ -178,8 +178,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
 
-  if (req.query.release_year) {
-    let releaseYearParts = req.query.release_year.split(',');
+  if (req.query.year) {
+    let releaseYearParts = req.query.year.split(',');
     if (releaseYearParts[1]) {
       params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
       params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
@@ -193,10 +193,10 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 
 
   // release_year report
-  const reportSql = `select count(r.id) as release_count, r.release_year FROM \`release\` r
+  const reportSql = `select count(r.id) as year_count, r.release_year as year FROM \`release\` r
   WHERE ${params.map(e => e[0]).join(' AND ')}
   group by r.release_year
-  order by release_count desc limit 100;`
+  order by release_count desc limit 200;`
 
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
@@ -222,7 +222,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   connection.release()
-  
+
   return {report: reportRows, data: rows}
 })
 
