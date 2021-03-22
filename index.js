@@ -191,15 +191,10 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   // format
   params.push([`r.id IN(select rf.release_id from release_format rf where rf.release_id = r.id and rf.name = ?)`, req.query.format])
 
-  const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, 
-  r.master_id as master_id, r.release_year,
-  ma.artist_id, 
-  a.name as artist_name, m.title from master_artist ma 
-  inner join \`master\` m on ma.master_id = m.id
-  inner join \`release\` r on r.master_id = m.id
-  inner join artist a on a.id = ma.artist_id
+  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.release_year
   WHERE 
   ${params.map(e => e[0]).join(' AND ')}
+  group by r.id
   order by r.release_year desc limit 100;`
 
   //return sql;
