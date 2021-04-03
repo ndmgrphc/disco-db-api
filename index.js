@@ -299,7 +299,7 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
 
 fastify.get('/barcodes/:barcode', async(req, reply) => {
   const connection = await fastify.mysql.getConnection()
-  
+
   const sql = `SELECT r.id, r.country, ri.description, r.title, a.name, rf.name, rf.descriptions
     FROM release_identifier ri inner join \`release\` r on r.id = ri.release_id 
     INNER JOIN master_artist ma on ma.master_id = r.master_id 
@@ -310,6 +310,8 @@ fastify.get('/barcodes/:barcode', async(req, reply) => {
   let [rows, fields] = await connection.query(
     sql, [req.params.barcode]
   );
+
+  connection.release();
 
   return rows;
 });
