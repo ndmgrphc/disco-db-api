@@ -297,6 +297,21 @@ async function eagerLoad(connection, parentRows, table, foreignKey) {
   })
 }
 
+fastify.get('/barcodes/:barcode', async(req, reply) => {
+  const sql = `SELECT r.id, r.country, ri.description, r.title, a.name, rf.name, rf.descriptions
+    FROM release_identifier ri inner join \`release\` r on r.id = ri.release_id 
+    INNER JOIN master_artist ma on ma.master_id = r.master_id 
+    INNER JOIN artist a on a.id = ma.artist_id 
+    INNER JOIN release_format rf on r.id = rf.release_id
+    WHERE type = 'Barcode' and normalized_value = ?;`;
+  
+  let [rows, fields] = await connection.query(
+    sql, [req.params.barcode]
+  );
+
+  return rows;
+});
+
 /**
  * Release countries, for export purposes, very slow
  */
