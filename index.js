@@ -6,7 +6,85 @@ const fastify = require('fastify')()
 
 fastify.register(require('fastify-mysql'), {
   promise: true,
-  connectionString: `mysql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}/discogs`
+  connectionString: `mysql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/discogs`
+})
+
+async function getGenresForReleaseId(connection, releaseId) {
+  let genres = {};
+
+  await Promise.all(['genre', 'style'].map(async source => {
+    const [rows, fields] = await connection.query(
+        `select ${source} from release_${source} where release_id = ?`, releaseId,
+    );
+
+    if (rows.length === 0)
+      return;
+
+    rows.forEach(e => {
+      genres[e[source]] = true;
+    })
+  }))
+
+  return Object.keys(genres);
+}
+
+fastify.get('/release_genres/:id', async (req, reply) => {
+  const connection = await fastify.mysql.getConnection()
+
+  const results = {
+    tags: await getGenresForReleaseId(connection, req.params.id)
+  };
+
+  connection.release();
+
+  return results;
+})
+
+/**
+ * Search Catalog Number
+ *
+ * /catalog_numbers?format=Vinyl&search=XLLP785
+ */
+
+fastify.get('/catalog_numbers', async (req, reply) => {
+  const connection = await fastify.mysql.getConnection()
+
+  if (req.query.search)
+    req.query.search = req.query.search.replace(/[^a-zA-Z0-9]+/g,"");
+
+  for (const required of ['format', 'search']) {
+    if (!req.query[required]) {
+      return validationResponse(reply, [
+        {field: required, error: `Field ${required} is required`}
+      ])
+    }
+  }
+
+  if (VALID_FORMATS.indexOf(req.query.format) < 0) {
+    return validationResponse(reply, [
+      {field: 'format', error: `Value must be one of ${VALID_FORMATS.join(', ')}`}
+    ])
+  }
+
+  let query = ['SELECT MIN(rl.catno) as catno, r.master_id as id, rf.name as format, \n' +
+  'ma.artist_id, a.name as artist_name, m.title \n' +
+  'FROM master_artist ma \n' +
+  'inner join `master` m on ma.master_id = m.id \n' +
+  'inner join `release` r on r.master_id = m.id \n' +
+  'inner join release_format rf on r.id = rf.release_id \n' +
+  'inner join release_label rl on r.id = rl.release_id \n' +
+  'inner join artist a on a.id = ma.artist_id \n' +
+  'WHERE rf.name = ? \n' +
+  'AND rl.normalized_catno LIKE ? \n' +
+  'GROUP BY r.master_id, ma.artist_id \n' +
+  'ORDER BY r.master_id\n' +
+  'LIMIT 25;', [req.query.format, `${req.query.search}%`]];
+
+  const [rows, fields] = await connection.query(
+      query[0], query[1],
+  )
+  connection.release()
+  return rows
 })
 
 /**
@@ -36,7 +114,7 @@ fastify.get('/artists', async (req, reply) => {
  * Show artist
  */
 
- fastify.get('/artists/:id', async (req, reply) => {
+fastify.get('/artists/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
   const [rows, fields] = await connection.query(
@@ -264,7 +342,9 @@ fastify.get('/releases/:id', async (req, reply) => {
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id')
-  
+
+  rows[0].genres = await getGenresForReleaseId(connection, req.params.id);
+
   connection.release()
 
   return rows[0]
