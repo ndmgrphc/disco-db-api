@@ -67,7 +67,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
   }
 
   let query = ['SELECT MIN(rl.catno) as catno, r.master_id as id, rf.name as format, \n' +
-  'ma.artist_id, a.name as artist_name, m.title \n' +
+  'ma.artist_id, a.name as artist_name, m.title, m.year \n' +
   'FROM master_artist ma \n' +
   'inner join `master` m on ma.master_id = m.id \n' +
   'inner join `release` r on r.master_id = m.id \n' +
