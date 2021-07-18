@@ -268,7 +268,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   if (req.query.catno) {
-    params.push([`rl.normalized_catno = ?`, `${req.query.catno.replace('[^a-zA-Z0-9]', '')}`]);
+    //params.push([`rl.normalized_catno = ?`, `${req.query.catno.replace('[^a-zA-Z0-9]', '')}`]);
+    params.push([`r.id IN(select rl.release_id from release_label rl where rl.release_id = r.id and rl.normalized_catno = ?)`, req.query.catno.replace(/[^a-zA-Z0-9]/, '')])
   }
 
   let nullYear = false;
@@ -297,7 +298,6 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   // release_year report
   const reportSql = `select count(r.id) as year_count, r.release_year as year 
     FROM \`release\` r
-    INNER JOIN release_label rl on r.id = rl.release_id
     WHERE ${params.map(e => e[0]).join(' AND ')}
     ${nullYearClause}
     group by r.release_year
@@ -307,21 +307,22 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     reportSql, params.map(e => e[1])
   );
 
-  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.release_year,
-    rl.label_name, rl.catno
+  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.release_year
   FROM \`release\` r
-  INNER JOIN release_label rl on r.id = rl.release_id
   WHERE 
   ${params.map(e => e[0]).join(' AND ')}
   ${nullYearClause}
-  group by r.id, rl.label_name, rl.catno
+  group by r.id
   order by r.release_year asc limit 100;`
 
   let [rows, fields] = await connection.query(
     sql, params.map(e => e[1])
   )
 
-  // TODO: parallel, also release_label is a hasOne?
+  /**
+   * These are all hasMany because release CAN have multiple labels/sublabels and
+   * multiple formats in box sets.
+   */
   if (rows.length > 0) {
     rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
     rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
