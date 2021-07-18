@@ -12,9 +12,20 @@ fastify.register(require('fastify-mysql'), {
 async function getGenresForReleaseId(connection, releaseId) {
   let genres = {};
 
+  /**
+   * Discogs mess.  Style and genre should be tied to master.  So we go up to the master and find
+   * its releases and aggregate their styles and genres into one report:
+   *
+   * SELECT style from release_style WHERE release_id IN(select r.id
+   * FROM `release` r where r.master_id IN(select master_id from `release` r where r.id = 226414))
+   * GROUP BY style;
+   */
+
   await Promise.all(['genre', 'style'].map(async source => {
     const [rows, fields] = await connection.query(
-        `select ${source} from release_${source} where release_id = ?`, releaseId,
+        `SELECT ${source} from release_${source} WHERE release_id IN(SELECT r.id 
+     FROM \`release\` r WHERE r.master_id IN(SELECT master_id FROM \`release\` r WHERE r.id = ?)) 
+     GROUP BY ${source};`, [releaseId]
     );
 
     if (rows.length === 0)
@@ -256,6 +267,10 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     params.push([`r.country = ?`, `${req.query.country}`]);
   }
 
+  if (req.query.catno) {
+    params.push([`rl.normalized_catno = ?`, `${req.query.catno.replace('[^a-zA-Z0-9]', '')}`]);
+  }
+
   let nullYear = false;
   if (req.query.year) {
     if (req.query.year === 'NULL') {
@@ -280,30 +295,33 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   // release_year report
-  const reportSql = `select count(r.id) as year_count, r.release_year as year FROM \`release\` r
-  WHERE ${params.map(e => e[0]).join(' AND ')}
-  ${nullYearClause}
-  group by r.release_year
-  order by year_count desc limit 200;`
+  const reportSql = `select count(r.id) as year_count, r.release_year as year 
+    FROM \`release\` r
+    INNER JOIN release_label rl on r.id = rl.release_id
+    WHERE ${params.map(e => e[0]).join(' AND ')}
+    ${nullYearClause}
+    group by r.release_year
+    order by year_count desc limit 200;`
 
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
   );
 
-  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.release_year
+  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.release_year,
+    rl.label_name, rl.catno
   FROM \`release\` r
+  INNER JOIN release_label rl on r.id = rl.release_id
   WHERE 
   ${params.map(e => e[0]).join(' AND ')}
   ${nullYearClause}
-  group by r.id
+  group by r.id, rl.label_name, rl.catno
   order by r.release_year asc limit 100;`
-
-  //return sql;
 
   let [rows, fields] = await connection.query(
     sql, params.map(e => e[1])
   )
 
+  // TODO: parallel, also release_label is a hasOne?
   if (rows.length > 0) {
     rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
     rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
