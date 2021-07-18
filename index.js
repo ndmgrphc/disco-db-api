@@ -301,7 +301,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
     WHERE ${params.map(e => e[0]).join(' AND ')}
     ${nullYearClause}
     group by r.release_year
-    order by year_count desc limit 200;`
+    order by release_year desc limit 200;`
 
   const [reportRows, reportFields] = await connection.query(
     reportSql, params.map(e => e[1])
