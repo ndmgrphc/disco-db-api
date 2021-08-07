@@ -21,18 +21,25 @@ async function getGenresForReleaseId(connection, releaseId) {
    * GROUP BY style;
    */
 
-  await Promise.all(['genre', 'style'].map(async source => {
+  /**
+   * Discogs release genre and style are an insufferable shitshow. So taking
+   * the first assigned genre with up to 4 styles seems to be at least usable
+   * in some way.
+   */
+  let areas = [['genre', 1], ['style', 4]];
+
+  await Promise.all(areas.map(async source => {
     const [rows, fields] = await connection.query(
-        `SELECT ${source} from release_${source} WHERE release_id IN(SELECT r.id 
+        `SELECT ${source[0]} from release_${source[0]} WHERE release_id IN(SELECT r.id 
      FROM \`release\` r WHERE r.master_id IN(SELECT master_id FROM \`release\` r WHERE r.id = ?)) 
-     GROUP BY ${source};`, [releaseId]
+     GROUP BY ${source[0]} LIMIT ${source[1]};`, [releaseId]
     );
 
     if (rows.length === 0)
       return;
 
     rows.forEach(e => {
-      genres[e[source]] = true;
+      genres[e[source[0]]] = true;
     })
   }))
 
