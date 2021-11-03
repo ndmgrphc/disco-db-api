@@ -149,6 +149,26 @@ fastify.get('/artists/:id', async (req, reply) => {
 })
 
 /**
+ * Get tracks for release (only works on tracks deployment, 130m rows)
+ */
+
+fastify.get('/tracks/:release_id', async (req, reply) => {
+  if (!req.params.release_id) {
+    return validationResponse(reply, [
+      {field: 'release_id', error: `The release id is required`}
+    ])
+  }
+
+  const connection = await fastify.mysql.getConnection()
+
+  const [resultRows, resultFields] = await connection.query(
+      `select * from release_track where release_id = ?;`, [req.params.release_id]
+  );
+
+  reply.send({data: resultRows});
+});
+
+/**
  * Get masters for artist
  */
 fastify.get('/artists/:artist_id/masters', async (req, reply) => {
