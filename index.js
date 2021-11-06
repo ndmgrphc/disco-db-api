@@ -161,11 +161,45 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
 
   const connection = await fastify.mysql.getConnection()
 
-  const [resultRows, resultFields] = await connection.query(
+  /**
+   * track artist outer join
+   *
+   * select rt.id, rt.sequence, rt.position, rt.title, rt.duration, rta.artist_id, rta.artist_name, rta.role
+   * from release_track rt left outer join release_track_artist rta on rt.id = rta.track_id_int
+   * where (rta.role = '' OR rta.role IS NULL) and rt.release_id = 1939822;
+   */
+  const [trackRows, trackFields] = await connection.query(
       `select * from release_track where release_id = ?;`, [req.params.release_id]
   );
 
-  reply.send({data: resultRows});
+  //select * from release_track_artist where track_id_int IN (23384742, 23384741, 23384740, 23384739)
+  const [artistRows, artistFields] = await connection.query(
+      `select * from release_track_artist where track_id_int IN (?);`, [trackRows.map(e => e.id)]
+  );
+
+  let artistRowsByTrackId = artistRows.reduce((a, e) => {
+    /**
+     * We need records without a role, these are actual artist records on compilations
+     */
+    if (!!e.role)
+      return a;
+
+    if (a[e.track_id])
+      return a;
+
+    a[e.track_id] = {
+      artist_id: e.artist_id,
+      artist_name: e.artist_name
+    }
+
+    return a;
+  }, {});
+
+  trackRows.forEach(e => {
+    e.artist = artistRowsByTrackId[e.id] ? artistRowsByTrackId[e.id] : null
+  })
+
+  reply.send({data: trackRows});
 });
 
 /**
