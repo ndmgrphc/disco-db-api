@@ -21,6 +21,15 @@ async function getGenresForReleaseId(connection, releaseId) {
    * GROUP BY style;
    */
 
+  const [releaseRows] = await connection.query(
+      `select id, master_id from \`release\` where id = ?;`, [releaseId]
+  );
+
+  if (!releaseRows[0])
+    return [];
+
+  const masterId = releaseRows[0].master_id;
+
   /**
    * Discogs release genre and style are an insufferable shitshow. So taking
    * the first assigned genre with up to 4 styles seems to be at least usable
@@ -29,10 +38,19 @@ async function getGenresForReleaseId(connection, releaseId) {
   let areas = [['genre', 1], ['style', 4]];
 
   await Promise.all(areas.map(async source => {
+    let sql = `SELECT ${source[0]} from release_${source[0]} where release_id = ? LIMIT ${source[1]}`;
+
+    if (masterId) {
+      sql = `SELECT ${source[0]} from release_${source[0]} 
+        WHERE release_id IN(
+          SELECT r.id FROM \`release\` r 
+              WHERE r.master_id IN(SELECT master_id FROM \`release\` r WHERE r.id = ?)
+        ) 
+        GROUP BY ${source[0]} LIMIT ${source[1]};`;
+    }
+
     const [rows, fields] = await connection.query(
-        `SELECT ${source[0]} from release_${source[0]} WHERE release_id IN(SELECT r.id 
-     FROM \`release\` r WHERE r.master_id IN(SELECT master_id FROM \`release\` r WHERE r.id = ?)) 
-     GROUP BY ${source[0]} LIMIT ${source[1]};`, [releaseId]
+        sql, [releaseId]
     );
 
     if (rows.length === 0)
@@ -89,7 +107,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
     INNER JOIN release_label rl on rl.release_id = r.id 
     INNER JOIN release_format rf on rf.release_id = r.id
     INNER JOIN release_artist ra ON r.id = ra.release_id
-    WHERE ra.role = '' AND rf.name = ? AND  rl.normalized_catno = ?
+    WHERE ra.role = '' AND rf.name = ? AND rl.normalized_catno LIKE ?
     GROUP BY r.master_id, ra.artist_id
     ORDER BY release_count DESC
     LIMIT 25;`;
@@ -400,9 +418,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 fastify.get('/releases/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
-  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.master_id as master_id 
-  WHERE 
-  r.id = ? limit 1;`
+  const sql = `select r.id, r.released, r.country, r.title as release_title, r.master_id as master_id from \`release\` r where r.id = ? limit 1;`
 
   let [rows, fields] = await connection.query(
     sql, [req.params.id]
@@ -415,18 +431,22 @@ fastify.get('/releases/:id', async (req, reply) => {
 
   rows[0].artist = null;
 
+  console.log('fetch artist', [rows[0].id, '']);
   let [artistRows, artistFields] = await connection.query(
-      `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = '';`, [rows[0].id]
+      `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = ?;`, [rows[0].id, '']
   )
 
   if (artistRows[0])
     rows[0].artist = artistRows[0];
 
-
+  console.log('loading release_identifier...');
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
+  console.log('loading release_label...');
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
+  console.log('loading release_format...');
   rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id')
 
+  console.log('loading genres...');
   rows[0].genres = await getGenresForReleaseId(connection, req.params.id);
 
   connection.release()
