@@ -147,7 +147,7 @@ fastify.get('/artists/:id', async (req, reply) => {
 })
 
 /**
- * Get tracks for release (only works on tracks deployment, 130m rows)
+ * Get tracks for release
  */
 
 fastify.get('/tracks/:release_id', async (req, reply) => {
@@ -400,11 +400,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 fastify.get('/releases/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
-  const sql = `select r.id as id, m.year, r.released, r.country, r.title as release_title, r.master_id as master_id, 
-   ma.artist_id, a.name as artist_name, m.title from master_artist ma 
-  inner join \`master\` m on ma.master_id = m.id
-  inner join \`release\` r on r.master_id = m.id
-  inner join artist a on a.id = ma.artist_id
+  const sql = `select r.id as id, r.released, r.country, r.title as release_title, r.master_id as master_id 
   WHERE 
   r.id = ? limit 1;`
 
@@ -416,6 +412,16 @@ fastify.get('/releases/:id', async (req, reply) => {
     connection.release()
     return notFoundResponse(reply)
   }
+
+  rows[0].artist = null;
+
+  let [artistRows, artistFields] = await connection.query(
+      `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = '';`, [rows[0].id]
+  )
+
+  if (artistRows[0])
+    rows[0].artist = artistRows[0];
+
 
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
