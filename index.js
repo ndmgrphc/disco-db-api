@@ -84,19 +84,17 @@ fastify.get('/catalog_numbers', async (req, reply) => {
     ])
   }
 
-  let query = ['SELECT MIN(rl.catno) as catno, r.master_id as id, rf.name as format, \n' +
-  'ma.artist_id, a.name as artist_name, m.title, m.year \n' +
-  'FROM master_artist ma \n' +
-  'inner join `master` m on ma.master_id = m.id \n' +
-  'inner join `release` r on r.master_id = m.id \n' +
-  'inner join release_format rf on r.id = rf.release_id \n' +
-  'inner join release_label rl on r.id = rl.release_id \n' +
-  'inner join artist a on a.id = ma.artist_id \n' +
-  'WHERE rf.name = ? \n' +
-  'AND rl.normalized_catno LIKE ? \n' +
-  'GROUP BY r.master_id, ma.artist_id \n' +
-  'ORDER BY r.master_id\n' +
-  'LIMIT 25;', [req.query.format, `${req.query.search}%`]];
+  const sql = `SELECT MIN(rl.catno) as catno, r.master_id, COUNT(r.id) as release_count, MIN(r.id) as release_id, MIN(r.title) as release_title, MIN(ra.artist_name) as artist_name, ra.artist_id
+    FROM \`release\` r  
+    INNER JOIN release_label rl on rl.release_id = r.id 
+    INNER JOIN release_format rf on rf.release_id = r.id
+    INNER JOIN release_artist ra ON r.id = ra.release_id
+    WHERE ra.role = '' AND rf.name = ? AND  rl.normalized_catno = ?
+    GROUP BY r.master_id, ra.artist_id
+    ORDER BY release_count DESC
+    LIMIT 25;`;
+
+  let query = [sql, [req.query.format, `${req.query.search}%`]];
 
   const [rows, fields] = await connection.query(
       query[0], query[1],
