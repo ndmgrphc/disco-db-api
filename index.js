@@ -102,13 +102,13 @@ fastify.get('/catalog_numbers', async (req, reply) => {
     ])
   }
 
-  const sql = `SELECT MIN(rl.catno) as catno, r.master_id, COUNT(r.id) as release_count, MIN(r.id) as release_id, MIN(r.title) as release_title, MIN(ra.artist_name) as artist_name, ra.artist_id
+  const sql = `SELECT MIN(rl.catno) as catno, r.master_id, COUNT(r.id) as release_count, MIN(r.id) as release_id, r.title as release_title, MIN(ra.artist_name) as artist_name, ra.artist_id
     FROM \`release\` r  
     INNER JOIN release_label rl on rl.release_id = r.id 
     INNER JOIN release_format rf on rf.release_id = r.id
     INNER JOIN release_artist ra ON r.id = ra.release_id
     WHERE ra.role = '' AND rf.name = ? AND rl.normalized_catno LIKE ?
-    GROUP BY r.master_id, ra.artist_id
+    GROUP BY r.master_id, ra.artist_id, r.title
     ORDER BY release_count DESC
     LIMIT 25;`;
 
