@@ -432,7 +432,7 @@ fastify.get('/releases/:id', async (req, reply) => {
   // add master details if exists
   if (rows[0].master_id) {
     const [masterRows, masterFields] = await connection.query(
-          `select * from \`master\` where id = ?`, [req.params.id]
+          `select * from \`master\` where id = ?`, [rows[0].master_id]
     );
     if (masterRows[0]) {
       rows[0].year = masterRows[0].year;
