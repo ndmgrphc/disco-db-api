@@ -416,7 +416,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
  */
 
 fastify.get('/releases/:id', async (req, reply) => {
-  const connection = await fastify.mysql.getConnection()
+  const connection = await fastify.mysql.getConnection();
 
   const sql = `select r.id, r.released, r.country, r.title as release_title, r.master_id as master_id from \`release\` r where r.id = ? limit 1;`
 
@@ -429,9 +429,19 @@ fastify.get('/releases/:id', async (req, reply) => {
     return notFoundResponse(reply)
   }
 
+  // add master details if exists
+  if (rows[0].master_id) {
+    const [masterRows, masterFields] = await connection.query(
+          `select * from \`master\` where id = ?`, [req.params.id]
+    );
+    if (masterRows[0]) {
+      rows[0].year = masterRows[0].year;
+      rows[0].title = masterRows[0].title;
+    }
+  }
+
   rows[0].artist = null;
 
-  console.log('fetch artist', [rows[0].id, '']);
   let [artistRows, artistFields] = await connection.query(
       `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = ?;`, [rows[0].id, '']
   )
@@ -439,14 +449,10 @@ fastify.get('/releases/:id', async (req, reply) => {
   if (artistRows[0])
     rows[0].artist = artistRows[0];
 
-  console.log('loading release_identifier...');
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
-  console.log('loading release_label...');
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
-  console.log('loading release_format...');
   rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id')
 
-  console.log('loading genres...');
   rows[0].genres = await getGenresForReleaseId(connection, req.params.id);
 
   connection.release()
