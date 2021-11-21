@@ -345,6 +345,7 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   }
 
   if (req.query.catno) {
+    req.query.catno = req.query.catno.substr(0, 12);
     //params.push([`rl.normalized_catno = ?`, `${req.query.catno.replace('[^a-zA-Z0-9]', '')}`]);
     params.push([`r.id IN(select rl.release_id from release_label rl where rl.release_id = r.id and rl.normalized_catno = ?)`, req.query.catno.replace(/[^a-zA-Z0-9]+/g, '')])
   }
