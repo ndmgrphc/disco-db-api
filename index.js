@@ -86,7 +86,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
   if (req.query.search)
-    req.query.search = req.query.search.replace(/[^a-zA-Z0-9]+/g,"");
+    req.query.search = req.query.search.replace(/[^a-zA-Z0-9]+/g,"").substr(0, 12);
 
   for (const required of ['format', 'search']) {
     if (!req.query[required]) {
