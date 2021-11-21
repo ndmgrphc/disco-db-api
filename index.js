@@ -1,5 +1,15 @@
 require('dotenv').config();
 
+const Scogger = require('./lib/Scogger');
+
+const scogger = new Scogger({
+  p: {
+    host: process.env.P_HOST,
+    port: process.env.P_PORT,
+    auth: process.env.P_AUTH
+  }
+});
+
 const VALID_FORMATS = ['Vinyl', 'CD', 'Cassette']
 
 const fastify = require('fastify')()
@@ -63,6 +73,14 @@ async function getGenresForReleaseId(connection, releaseId) {
 
   return Object.keys(genres);
 }
+
+fastify.get('/release_metas/:id', async(req, reply) => {
+  try {
+    return await scogger.scogDat(req.params.id);
+  } catch (e) {
+    reply.status(422).json({error: 'I cannot'});
+  }
+});
 
 fastify.get('/release_genres/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()

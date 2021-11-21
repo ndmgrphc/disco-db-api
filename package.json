@@ -5,8 +5,14 @@
   "repository": "git@github-ndmgrphc:ndmgrphc/disco-db-api.git",
   "license": "MIT",
   "dependencies": {
+    "axios": "^0.24.0",
+    "axios-cookiejar-support": "^2.0.3",
+    "cheerio": "^1.0.0-rc.10",
     "dotenv": "^8.2.0",
     "fastify": "^3.14.0",
-    "fastify-mysql": "^2.1.0"
+    "fastify-mysql": "^2.1.0",
+    "https-proxy-agent": "^5.0.0",
+    "qs": "^6.10.1",
+    "tough-cookie": "^4.0.0"
   }
 }
