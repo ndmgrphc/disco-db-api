@@ -82,6 +82,10 @@ fastify.get('/release_metas/:id', async(req, reply) => {
   }
 });
 
+fastify.post('/api-import/:release_id', async (req, reply) => {
+  // https://api.discogs.com/releases/21017023
+});
+
 fastify.get('/release_genres/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
@@ -203,7 +207,7 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
    * where (rta.role = '' OR rta.role IS NULL) and rt.release_id = 1939822;
    */
   const [trackRows, trackFields] = await connection.query(
-      `select * from release_track where release_id = ?;`, [req.params.release_id]
+      `select * from release_track where release_id = ? and position != '' and sequence is not null order by sequence;`, [req.params.release_id]
   );
 
   //select * from release_track_artist where track_id_int IN (23384742, 23384741, 23384740, 23384739)
