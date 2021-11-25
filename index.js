@@ -230,6 +230,8 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
       artist_name: e.artist_name
     }
 
+    connection.release();
+
     return a;
   }, {});
 
@@ -318,6 +320,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
 
   //return [reportSql, params.map(e => e[1])];
   if (req.query.debugReport) {
+    connection.release();
     return [reportSql, params.map(e => e[1])];
   }
 
