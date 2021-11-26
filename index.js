@@ -134,7 +134,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
     INNER JOIN release_label rl on rl.release_id = r.id 
     INNER JOIN release_format rf on rf.release_id = r.id
     INNER JOIN release_artist ra ON r.id = ra.release_id
-    WHERE ra.role = '' AND rf.name = ? AND rl.normalized_catno LIKE ?
+    WHERE (ra.role = '' OR ra.role is null) AND rf.name = ? AND rl.normalized_catno LIKE ?
     GROUP BY r.master_id, ra.artist_id, r.title
     ORDER BY release_count DESC
     LIMIT 25;`;
