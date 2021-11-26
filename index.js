@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const ApiImport = require('./lib/ApiImport');
 const Scogger = require('./lib/Scogger');
 
 const scogger = new Scogger({
@@ -82,8 +83,12 @@ fastify.get('/release_metas/:id', async(req, reply) => {
   }
 });
 
-fastify.post('/api-import/:release_id', async (req, reply) => {
+fastify.post('/api-imports/:id', async (req, reply) => {
+  const connection = await fastify.mysql.getConnection();
   // https://api.discogs.com/releases/21017023
+  const apiImport = new ApiImport(connection, false);
+
+  return await apiImport.import(req.params.id);
 });
 
 fastify.get('/release_genres/:id', async (req, reply) => {
@@ -469,7 +474,7 @@ fastify.get('/releases/:id', async (req, reply) => {
   rows[0].artist = null;
 
   let [artistRows, artistFields] = await connection.query(
-      `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = ?;`, [rows[0].id, '']
+      `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = ? || role is null;`, [rows[0].id, '']
   )
 
   if (artistRows[0])
