@@ -474,7 +474,7 @@ fastify.get('/releases/:id', async (req, reply) => {
   rows[0].artist = null;
 
   let [artistRows, artistFields] = await connection.query(
-      `select artist_name as name, artist_id as id from release_artist where release_id = ? and role = ? || role is null;`, [rows[0].id, '']
+      `select artist_name as name, artist_id as id from release_artist where release_id = ? and (role = ? OR role is null);`, [rows[0].id, '']
   )
 
   if (artistRows[0])
