@@ -91,6 +91,10 @@ fastify.post('/api-imports/:id', async (req, reply) => {
   return await apiImport.import(req.params.id);
 });
 
+fastify.get('/artist-hydrations', async (req, reply) => {
+  // TODO: finish this
+})
+
 fastify.get('/release_genres/:id', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
 
@@ -117,6 +121,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
 
   for (const required of ['format', 'search']) {
     if (!req.query[required]) {
+      connection.release();
       return validationResponse(reply, [
         {field: required, error: `Field ${required} is required`}
       ])
@@ -124,6 +129,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
   }
 
   if (VALID_FORMATS.indexOf(req.query.format) < 0) {
+    connection.release();
     return validationResponse(reply, [
       {field: 'format', error: `Value must be one of ${VALID_FORMATS.join(', ')}`}
     ])
@@ -157,7 +163,7 @@ fastify.get('/artists', async (req, reply) => {
 
   let query;
   if (req.query.search) {
-    query = ['SELECT id, name FROM artist WHERE name LIKE ? limit 20', [`${req.query.search}%`]];
+    query = ['select a.id, a.name, count(ra.id) as release_count from artist a inner join release_artist ra on ra.artist_id = a.id  where name LIKE ? group by a.id order by release_count desc limit 5;', [`${req.query.search}%`]];
   } else if (req.query.name) {
     query = ['SELECT id, name FROM artist WHERE name = ? limit 1', [`${req.query.name}`]];
   } else {
