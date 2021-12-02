@@ -159,7 +159,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
  */
 
 fastify.get('/artists', async (req, reply) => {
-  const connection = await fastify.mysql.getConnection()
+  const connection = await fastify.mysql.getConnection();
 
   let query;
   if (req.query.search) {
@@ -173,7 +173,7 @@ fastify.get('/artists', async (req, reply) => {
   const [rows, fields] = await connection.query(
     query[0], query[1],
   )
-  connection.release()
+  connection.release();
   return rows
 })
 
@@ -382,8 +382,9 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
 
   if (req.query.catno) {
     req.query.catno = req.query.catno.substr(0, 12);
+    let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
     //params.push([`rl.normalized_catno = ?`, `${req.query.catno.replace('[^a-zA-Z0-9]', '')}`]);
-    params.push([`r.id IN(select rl.release_id from release_label rl where rl.release_id = r.id and rl.normalized_catno = ?)`, req.query.catno.replace(/[^a-zA-Z0-9]+/g, '')])
+    params.push([`r.id IN(select rl.release_id from release_label rl where rl.release_id = r.id and rl.normalized_catno LIKE ?)`, `${normalizedCatNo}%`])
   }
 
   let nullYear = false;
