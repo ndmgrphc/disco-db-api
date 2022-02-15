@@ -170,7 +170,7 @@ fastify.get('/artists', async (req, reply) => {
 
   let query;
   if (req.query.search) {
-    query = ['select a.id, a.name, count(ra.id) as release_count from artist a inner join release_artist ra on ra.artist_id = a.id inner join release_format rf on ra.release_id = rf.release_id where name LIKE ? and rf.name = ? group by a.id order by release_count desc limit 10;', [`${req.query.search}%`, format]];
+    query = ['select a.id, a.name, count(ra.id) as release_count from artist a inner join release_artist ra on ra.artist_id = a.id inner join release_format rf on ra.release_id = rf.release_id where a.name LIKE ? and rf.name = ? group by a.id order by release_count desc limit 10;', [`${req.query.search}%`, format]];
   } else if (req.query.name) {
     query = ['SELECT id, name FROM artist WHERE name = ? limit 1', [`${req.query.name}`]];
   } else {
