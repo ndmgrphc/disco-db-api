@@ -11,6 +11,6 @@ const scogger = new Scogger({
 });
 
 (async () => {
-    let result = await scogger.scogDat(6075279);
+    let result = await scogger.scogDat(14176877);
     console.log(result);
 })();
