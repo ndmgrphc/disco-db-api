@@ -141,7 +141,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
     INNER JOIN release_format rf on rf.release_id = r.id
     INNER JOIN release_artist ra ON r.id = ra.release_id
     WHERE (ra.role = '' OR ra.role is null) AND rf.name = ? AND rl.normalized_catno LIKE ?
-    GROUP BY r.master_id, ra.artist_id, r.title
+    GROUP BY ra.artist_id, r.title, rl.normalized_catno
     ORDER BY release_count DESC
     LIMIT 25;`;
 
@@ -292,6 +292,7 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
 
 /**
  * Get masters for artist
+ * @deprecated
  */
 fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   const connection = await fastify.mysql.getConnection()
