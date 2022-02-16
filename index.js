@@ -11,7 +11,7 @@ const scogger = new Scogger({
   }
 });
 
-const VALID_FORMATS = ['Vinyl', 'CD', 'Cassette']
+const VALID_FORMATS = ['Vinyl', 'CD', 'Cassette', '8-Track Cartridge', 'Reel-to-Reel']
 
 const fastify = require('fastify')()
 
@@ -164,13 +164,42 @@ fastify.get('/artists', async (req, reply) => {
   const connection = await fastify.mysql.getConnection();
 
   let format = req.query.format;
-  if (!format || ['Vinyl', 'CD', 'Cassette', 'Reel'].indexOf(format) < 0) {
+  if (!format || ['Vinyl', 'CD', 'Cassette'].indexOf(format) < 0) {
     format = 'Vinyl';
   }
 
   let query;
   if (req.query.search) {
-    query = ['select a.id, a.name, count(ra.id) as release_count from artist a inner join release_artist ra on ra.artist_id = a.id inner join release_format rf on ra.release_id = rf.release_id where a.name LIKE ? and rf.name = ? group by a.id order by release_count desc limit 10;', [`${req.query.search}%`, format]];
+    // check variations
+    const [varRows, varFields] = await connection.query(
+        `select an.artist_id, a.name, COUNT(an.artist_id) as variation_count 
+            from artist_namevariation an inner join artist a on an.artist_id = a.id 
+            where an.name like ? group by an.artist_id order by variation_count 
+            desc limit 10;`, `${req.query.search}%`,
+    )
+
+    let artistIds = [];
+    if (varRows.length > 0)
+      artistIds = varRows.map(e => e.artist_id);
+
+    if (artistIds.length > 0) {
+      query = [`select a.id, a.name, count(ra.id) as release_count 
+                from artist a inner join release_artist ra on ra.artist_id = a.id 
+                inner join release_format rf on ra.release_id = rf.release_id 
+                where (a.name LIKE ? OR a.id IN(?)) and rf.name = ? 
+                group by a.id order by release_count desc limit 10;`,
+        [`${req.query.search}%`, artistIds, format]
+      ];
+    } else {
+      query = [`select a.id, a.name, count(ra.id) as release_count 
+                from artist a inner join release_artist ra on ra.artist_id = a.id 
+                inner join release_format rf on ra.release_id = rf.release_id 
+                where a.name LIKE ? and rf.name = ? 
+                group by a.id order by release_count desc limit 10;`,
+        [`${req.query.search}%`, format]
+      ];
+    }
+
   } else if (req.query.name) {
     query = ['SELECT id, name FROM artist WHERE name = ? limit 1', [`${req.query.name}`]];
   } else {
@@ -180,6 +209,7 @@ fastify.get('/artists', async (req, reply) => {
   const [rows, fields] = await connection.query(
     query[0], query[1],
   )
+
   connection.release();
   return rows
 })
@@ -355,6 +385,80 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   connection.release()
 
   return {report: reportRows, data: rows}
+})
+
+/**
+ * Get "albums" for artist
+ * A hybrid of master and release search because some releases don't have masters.
+ */
+
+fastify.get('/artists/:artist_id/albums', async (req, reply) => {
+  const connection = await fastify.mysql.getConnection()
+
+  let format = req.query.format;
+  if (!format || VALID_FORMATS.indexOf(format) < 0)
+    format = 'Vinyl';
+
+  let params = [
+    [`ra.artist_id = ?`, req.params.artist_id],
+    [`rf.name = ?`, format]
+  ];
+
+  if (req.query.search) {
+    params.push([`r.title like ?`, `${req.query.search}%`]);
+  }
+
+  /**
+   * You can also provide release_year and text_string to get a release report by text_string, release_year
+   * @type {boolean}
+   */
+  let textStringReport = false;
+
+  if (req.query.title) {
+    textStringReport = true;
+    params.push([`r.title = ?`, `${req.query.title}`]);
+  }
+
+  if (req.query.release_year) {
+    textStringReport = true;
+    let releaseYearParts = req.query.release_year.split(',');
+    if (releaseYearParts[1]) {
+      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
+      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
+    } else {
+      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
+    }
+  }
+
+  let sql;
+
+  if (!textStringReport) {
+    sql = `SELECT min(r.id) as first_release_id, min(r.release_year) as first_release_year, r.title, m.id as master_id, m.year as master_year, count(m.id) as release_count
+                FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
+                INNER JOIN release_format rf ON rf.release_id = r.id
+                LEFT JOIN \`master\` m ON r.master_id = m.id
+                WHERE ${params.map(e => e[0]).join(' AND ')}
+                GROUP BY r.title, m.id, m.year
+                ORDER BY release_count DESC
+                LIMIT 40;`;
+  } else {
+    sql = `SELECT r.title, r.release_year, rf.text_string, count(r.id) as release_count
+                FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
+                INNER JOIN release_format rf ON rf.release_id = r.id
+                WHERE ${params.map(e => e[0]).join(' AND ')}
+                GROUP BY r.title, rf.text_string, r.release_year
+                ORDER BY release_count DESC
+                LIMIT 40;`;
+  }
+
+
+  const [rows, fields] = await connection.query(
+      sql, params.map(e => e[1]),
+  )
+
+  connection.release()
+
+  return {data: rows}
 })
 
 /**
