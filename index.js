@@ -454,6 +454,9 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
     params.push([`rl.normalized_catno = ?`, `${normalizedCatNo}`]);
   }
 
+  if (req.query.label_name)
+    params.push('rl.label_name', req.query.label_name);
+
   if (req.query.release_year) {
     let releaseYearParts = req.query.release_year.split(',');
     if (releaseYearParts[1]) {
