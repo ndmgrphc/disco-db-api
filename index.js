@@ -485,6 +485,8 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
                 ORDER BY release_count DESC
                 LIMIT 40;`;
 
+  console.log('params', sql);
+
   const [rows, fields] = await connection.query(
       sql, params.map(e => e[1]),
   )
