@@ -474,6 +474,8 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
     }
   }
 
+  console.log('params', params);
+
   let sql = `SELECT r.title, r.release_year, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
