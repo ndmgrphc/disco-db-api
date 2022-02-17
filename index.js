@@ -454,11 +454,15 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
     params.push([`rl.normalized_catno = ?`, `${normalizedCatNo}`]);
   }
 
+  if (req.query.text_string)
+    params.push('rf.text_string', req.query.text_string);
+
   if (req.query.label_name)
     params.push('rl.label_name', req.query.label_name);
 
+  // TODO: ignored for now
   if (req.query.master_year)
-    params.push('')
+    params.push('m.year',req.query.master_year);
 
   if (req.query.release_year) {
     let releaseYearParts = req.query.release_year.split(',');
@@ -470,12 +474,12 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
     }
   }
 
-  let sql = `SELECT r.title, r.release_year, rl.normalized_catno, rf.text_string, count(r.id) as release_count
+  let sql = `SELECT r.title, r.release_year, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
                 WHERE ${params.map(e => e[0]).join(' AND ')}
-                GROUP BY r.title, rl.normalized_catno, rf.text_string, r.release_year
+                GROUP BY r.title, rl.label_name, rl.normalized_catno, rf.text_string, r.release_year
                 ORDER BY release_count DESC
                 LIMIT 40;`;
 
