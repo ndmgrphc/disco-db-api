@@ -449,8 +449,10 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
     ])
   }
 
-  if (req.query.normalized_catno)
-    params.push([`rl.normalized_catno = ?`, `${req.query.normalized_catno}`]);
+  if (req.query.catno) {
+    let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
+    params.push([`rl.normalized_catno = ?`, `${normalizedCatNo}`]);
+  }
 
   if (req.query.release_year) {
     let releaseYearParts = req.query.release_year.split(',');
