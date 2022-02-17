@@ -414,6 +414,7 @@ fastify.get('/artists/:artist_id/albums', async (req, reply) => {
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 LEFT JOIN \`master\` m ON r.master_id = m.id
                 WHERE ${params.map(e => e[0]).join(' AND ')}
+                AND release_count  > 0
                 GROUP BY r.title, m.id, m.year
                 ORDER BY release_count DESC
                 LIMIT 40;`;
@@ -456,6 +457,9 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
 
   if (req.query.label_name)
     params.push('rl.label_name', req.query.label_name);
+
+  if (req.query.master_year)
+    params.push('')
 
   if (req.query.release_year) {
     let releaseYearParts = req.query.release_year.split(',');
