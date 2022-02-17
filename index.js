@@ -455,14 +455,14 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
   }
 
   if (req.query.text_string)
-    params.push('rf.text_string', req.query.text_string);
+    params.push('rf.text_string = ?', req.query.text_string);
 
   if (req.query.label_name)
-    params.push('rl.label_name', req.query.label_name);
+    params.push('rl.label_name = ?', req.query.label_name);
 
   // TODO: ignored for now
   if (req.query.master_year)
-    params.push('m.year',req.query.master_year);
+    params.push('m.year = ?',req.query.master_year);
 
   if (req.query.release_year) {
     let releaseYearParts = req.query.release_year.split(',');
