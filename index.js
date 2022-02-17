@@ -409,32 +409,7 @@ fastify.get('/artists/:artist_id/albums', async (req, reply) => {
     params.push([`r.title like ?`, `${req.query.search}%`]);
   }
 
-  /**
-   * You can also provide release_year and text_string to get a release report by text_string, release_year
-   * @type {boolean}
-   */
-  let textStringReport = false;
-
-  if (req.query.title) {
-    textStringReport = true;
-    params.push([`r.title = ?`, `${req.query.title}`]);
-  }
-
-  if (req.query.release_year) {
-    textStringReport = true;
-    let releaseYearParts = req.query.release_year.split(',');
-    if (releaseYearParts[1]) {
-      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
-      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
-    } else {
-      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
-    }
-  }
-
-  let sql;
-
-  if (!textStringReport) {
-    sql = `SELECT min(r.id) as first_release_id, min(r.release_year) as first_release_year, r.title, m.id as master_id, m.year as master_year, count(m.id) as release_count
+  let sql = `SELECT min(r.id) as first_release_id, min(r.release_year) as first_release_year, r.title, m.id as master_id, m.year as master_year, count(m.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 LEFT JOIN \`master\` m ON r.master_id = m.id
@@ -442,15 +417,7 @@ fastify.get('/artists/:artist_id/albums', async (req, reply) => {
                 GROUP BY r.title, m.id, m.year
                 ORDER BY release_count DESC
                 LIMIT 40;`;
-  } else {
-    sql = `SELECT r.title, r.release_year, rf.text_string, count(r.id) as release_count
-                FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
-                INNER JOIN release_format rf ON rf.release_id = r.id
-                WHERE ${params.map(e => e[0]).join(' AND ')}
-                GROUP BY r.title, rf.text_string, r.release_year
-                ORDER BY release_count DESC
-                LIMIT 40;`;
-  }
+
 
 
   const [rows, fields] = await connection.query(
@@ -460,7 +427,58 @@ fastify.get('/artists/:artist_id/albums', async (req, reply) => {
   connection.release()
 
   return {data: rows}
-})
+});
+
+fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
+  const connection = await fastify.mysql.getConnection();
+
+  let format = req.query.format;
+  if (!format || VALID_FORMATS.indexOf(format) < 0)
+    format = 'Vinyl';
+
+  let params = [
+    [`ra.artist_id = ?`, req.params.artist_id],
+    [`rf.name = ?`, format]
+  ];
+
+  if (req.query.title) {
+    params.push([`r.title = ?`, `${req.query.title}`]);
+  } else {
+    return validationResponse(reply, [
+      {field: 'title', error: `Field title (the exact album title) is required`}
+    ])
+  }
+
+  if (req.query.normalized_catno)
+    params.push([`rl.normalized_catno = ?`, `${req.query.normalized_catno}`]);
+
+  if (req.query.release_year) {
+    let releaseYearParts = req.query.release_year.split(',');
+    if (releaseYearParts[1]) {
+      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
+      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
+    } else {
+      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
+    }
+  }
+
+  let sql = `SELECT r.title, r.release_year, rl.normalized_catno, rf.text_string, count(r.id) as release_count
+                FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
+                INNER JOIN release_format rf ON rf.release_id = r.id
+                INNER JOIN release_label rl ON rl.release_id = r.id
+                WHERE ${params.map(e => e[0]).join(' AND ')}
+                GROUP BY r.title, rl.catno, rf.text_string, r.release_year
+                ORDER BY release_count DESC
+                LIMIT 40;`;
+
+  const [rows, fields] = await connection.query(
+      sql, params.map(e => e[1]),
+  )
+
+  connection.release()
+
+  return {data: rows}
+});
 
 /**
  * Get releases for master
