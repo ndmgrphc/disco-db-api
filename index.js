@@ -418,8 +418,6 @@ fastify.get('/artists/:artist_id/albums', async (req, reply) => {
                 ORDER BY release_count DESC
                 LIMIT 40;`;
 
-
-
   const [rows, fields] = await connection.query(
       sql, params.map(e => e[1]),
   )
@@ -474,14 +472,20 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
     }
   }
 
+  if (req.query.release_country) {
+    let normalizedReleaseCountries = normalizeReleaseCountries(req.query.release_country);
+    if (req.query.release_country)
+      params.push(normalizedReleaseCountries);
+  }
+
   //console.log('params', params);
 
-  let sql = `SELECT r.title, r.release_year, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
+  let sql = `SELECT r.title, r.release_year, r.release_country, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
                 WHERE ${params.map(e => e[0]).join(' AND ')}
-                GROUP BY r.title, rl.label_name, rl.normalized_catno, rf.text_string, r.release_year
+                GROUP BY r.title, rl.label_name, rl.normalized_catno, rf.text_string, r.release_year, r.release_country
                 ORDER BY release_count DESC
                 LIMIT 40;`;
 
@@ -495,6 +499,22 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
 
   return {data: rows}
 });
+
+function normalizeReleaseCountries(input) {
+  if (!Array.isArray(input)) {
+    input = [input];
+  }
+
+  let validValues = input.filter(e => !!e);
+  if (!validValues || validValues.length === 0)
+    return null;
+
+  if (input.indexOf(null) > -1 || input.indexOf('') > -1) {
+    return [`(r.release_year is null OR r.release_year IN (?))`, validValues];
+  } else {
+    return [`r.release_year IN (?)`, validValues];
+  }
+}
 
 /**
  * Get releases for master
