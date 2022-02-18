@@ -480,7 +480,7 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
 
   //console.log('params', params);
 
-  let sql = `SELECT r.title, r.release_year, r.release_country, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
+  let sql = `SELECT r.title, r.release_year, r.country, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
@@ -510,9 +510,9 @@ function normalizeReleaseCountries(input) {
     return null;
 
   if (input.indexOf(null) > -1 || input.indexOf('') > -1) {
-    return [`(r.release_year is null OR r.release_year IN (?))`, validValues];
+    return [`(r.country is null OR r.country IN (?))`, validValues];
   } else {
-    return [`r.release_year IN (?)`, validValues];
+    return [`r.country IN (?)`, validValues];
   }
 }
 
