@@ -171,18 +171,22 @@ fastify.get('/artists', async (req, reply) => {
   let query;
   if (req.query.search) {
     // check variations
+    console.time('variation');
     const [varRows, varFields] = await connection.query(
         `select an.artist_id, a.name, COUNT(an.artist_id) as variation_count 
             from artist_namevariation an inner join artist a on an.artist_id = a.id 
             where an.name like ? group by an.artist_id order by variation_count 
             desc limit 10;`, `${req.query.search}%`,
-    )
+    );
+
+    console.timeEnd('variation');
 
     let artistIds = [];
     if (varRows.length > 0)
       artistIds = varRows.map(e => e.artist_id);
 
     if (artistIds.length > 0) {
+      console.time('artistWithVariations');
       query = [`select a.id, a.name, count(ra.id) as release_count 
                 from artist a inner join release_artist ra on ra.artist_id = a.id 
                 inner join release_format rf on ra.release_id = rf.release_id 
@@ -190,7 +194,9 @@ fastify.get('/artists', async (req, reply) => {
                 group by a.id order by release_count desc limit 10;`,
         [`${req.query.search}%`, artistIds, format]
       ];
+      console.timeEnd('artistWithVariations');
     } else {
+      console.time('artistWithoutVariations');
       query = [`select a.id, a.name, count(ra.id) as release_count 
                 from artist a inner join release_artist ra on ra.artist_id = a.id 
                 inner join release_format rf on ra.release_id = rf.release_id 
@@ -198,6 +204,7 @@ fastify.get('/artists', async (req, reply) => {
                 group by a.id order by release_count desc limit 10;`,
         [`${req.query.search}%`, format]
       ];
+      console.timeEnd('artistWithoutVariations');
     }
 
   } else if (req.query.name) {
