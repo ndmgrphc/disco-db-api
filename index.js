@@ -485,7 +485,7 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
                 WHERE ${params.map(e => e[0]).join(' AND ')}
-                GROUP BY r.title, rl.label_name, rl.normalized_catno, rf.text_string, r.release_year, r.release_country
+                GROUP BY r.title, rl.label_name, rl.normalized_catno, rf.text_string, r.release_year, r.country
                 ORDER BY release_count DESC
                 LIMIT 40;`;
 
