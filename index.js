@@ -88,6 +88,7 @@ fastify.post('/api-imports/:id', async (req, reply) => {
   // https://api.discogs.com/releases/21017023
   const apiImport = new ApiImport(connection, false);
 
+  connection.release();
   return await apiImport.import(req.params.id);
 });
 
@@ -114,14 +115,11 @@ fastify.get('/release_genres/:id', async (req, reply) => {
  */
 
 fastify.get('/catalog_numbers', async (req, reply) => {
-  const connection = await fastify.mysql.getConnection()
-
   if (req.query.search)
     req.query.search = req.query.search.replace(/[^a-zA-Z0-9]+/g,"").substr(0, 12);
 
   for (const required of ['format', 'search']) {
     if (!req.query[required]) {
-      connection.release();
       return validationResponse(reply, [
         {field: required, error: `Field ${required} is required`}
       ])
@@ -129,11 +127,12 @@ fastify.get('/catalog_numbers', async (req, reply) => {
   }
 
   if (VALID_FORMATS.indexOf(req.query.format) < 0) {
-    connection.release();
     return validationResponse(reply, [
       {field: 'format', error: `Value must be one of ${VALID_FORMATS.join(', ')}`}
     ])
   }
+
+  const connection = await fastify.mysql.getConnection()
 
   const sql = `SELECT MIN(rl.catno) as catno, rl.label_name, r.master_id, COUNT(r.id) as release_count, MIN(r.id) as release_id, r.title as release_title, MIN(ra.artist_name) as artist_name, ra.artist_id
     FROM \`release\` r  
@@ -278,14 +277,14 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
       artist_name: e.artist_name
     }
 
-    connection.release();
-
     return a;
   }, {});
 
   trackRows.forEach(e => {
     e.artist = artistRowsByTrackId[e.id] ? artistRowsByTrackId[e.id] : null
   })
+
+  connection.release();
 
   reply.send({data: trackRows});
 });
@@ -295,8 +294,6 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
  * @deprecated
  */
 fastify.get('/artists/:artist_id/masters', async (req, reply) => {
-  const connection = await fastify.mysql.getConnection()
-
   for (const required of ['format']) {
     if (!req.query[required]) {
       return validationResponse(reply, [
@@ -337,6 +334,8 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     prefetchParams.push([`r.country = ?`, `${req.query.country}`])
   }
 
+  const connection = await fastify.mysql.getConnection()
+
   let prefetchSql = `select r.master_id from \`release\` r 
   inner join release_format rf on rf.release_id = r.id 
   inner join master_artist ma on ma.master_id = r.master_id
@@ -369,7 +368,6 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
 
   //return [reportSql, params.map(e => e[1])];
   if (req.query.debugReport) {
-    connection.release();
     return [reportSql, params.map(e => e[1])];
   }
 
@@ -428,57 +426,14 @@ fastify.get('/artists/:artist_id/albums', async (req, reply) => {
 });
 
 fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
-  const connection = await fastify.mysql.getConnection();
 
-  let format = req.query.format;
-  if (!format || VALID_FORMATS.indexOf(format) < 0)
-    format = 'Vinyl';
+  let params = normalizeRequestParams(req);
 
-  let params = [
-    [`ra.artist_id = ?`, req.params.artist_id],
-    [`rf.name = ?`, format]
-  ];
-
-  if (req.query.title) {
-    params.push([`r.title = ?`, `${req.query.title}`]);
-  } else {
-    return validationResponse(reply, [
-      {field: 'title', error: `Field title (the exact album title) is required`}
-    ])
-  }
-
-  if (req.query.catno) {
-    let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
-    params.push([`rl.normalized_catno = ?`, `${normalizedCatNo}`]);
-  }
-
-  if (req.query.text_string)
-    params.push(['rf.text_string = ?', req.query.text_string]);
-
-  if (req.query.label_name)
-    params.push(['rl.label_name = ?', req.query.label_name]);
-
-  // TODO: ignored for now
-  if (req.query.master_year)
-    params.push(['m.year = ?',req.query.master_year]);
-
-  if (req.query.release_year) {
-    let releaseYearParts = req.query.release_year.split(',');
-    if (releaseYearParts[1]) {
-      params.push([`r.release_year >= ?`, `${releaseYearParts[0]}`]);
-      params.push([`r.release_year <= ?`, `${releaseYearParts[1]}`]);
-    } else {
-      params.push([`r.release_year = ?`, `${releaseYearParts[0]}`]);
-    }
-  }
-
-  if (req.query.release_country) {
-    let normalizedReleaseCountries = normalizeReleaseCountries(req.query.release_country);
-    if (req.query.release_country)
-      params.push(normalizedReleaseCountries);
-  }
+  params.push([`ra.artist_id = ?`, req.params.artist_id]);
 
   //console.log('params', params);
+
+  const connection = await fastify.mysql.getConnection();
 
   let sql = `SELECT r.title, r.release_year, r.country, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
@@ -524,7 +479,51 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
   return {data: rows, countries: countryRows, years: yearRows}
 });
 
-function normalizeReleaseCountries(input) {
+function normalizeRequestParams(req) {
+  let format = req.query.format;
+  if (!format || VALID_FORMATS.indexOf(format) < 0)
+    format = 'Vinyl';
+
+  let params = [
+    [`rf.name = ?`, format]
+  ];
+
+  if (req.query.title) {
+    params.push([`r.title = ?`, `${req.query.title}`]);
+  } else {
+    return validationResponse(reply, [
+      {field: 'title', error: `Field title (the exact album title) is required`}
+    ])
+  }
+
+  if (req.query.catno) {
+    let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
+    params.push([`rl.normalized_catno = ?`, `${normalizedCatNo}`]);
+  }
+
+  if (req.query.label_name)
+    params.push(['rl.label_name = ?', req.query.label_name]);
+
+  // TODO: ignored for now
+  if (req.query.master_year)
+    params.push(['m.year = ?',req.query.master_year]);
+
+  if (req.query.release_year) {
+    let normalizedReleaseYears = normalizeReleaseQueryField(req.query.release_year, 'release_year');
+    if (normalizedReleaseYears)
+      params.push(normalizedReleaseYears);
+  }
+
+  if (req.query.release_country) {
+    let normalizedReleaseCountries = normalizeReleaseQueryField(req.query.release_country, 'country');
+    if (normalizedReleaseCountries)
+      params.push(normalizedReleaseCountries);
+  }
+
+  return params;
+}
+
+function normalizeReleaseQueryField(input, field) {
   if (!Array.isArray(input)) {
     input = [input];
   }
@@ -534,10 +533,107 @@ function normalizeReleaseCountries(input) {
     return null;
 
   if (input.indexOf(null) > -1 || input.indexOf('') > -1) {
-    return [`(r.country is null OR r.country IN (?))`, validValues];
+    return [`(r.${field} is null OR r.${field} IN (?))`, validValues];
   } else {
-    return [`r.country IN (?)`, validValues];
+    return [`r.${field} IN (?)`, validValues];
   }
+}
+
+/**
+ * Updated flexible release search
+ */
+
+fastify.get('/releases', async (req, reply) => {
+
+  // quick required field check
+  for (const required of ['format', 'artist_id', 'title']) {
+    if (!req.query[required]) {
+      return validationResponse(reply, [
+        {field: required, error: `Field ${required} is required`}
+      ])
+    }
+  }
+
+  let params = normalizeRequestParams(req);
+
+  /**
+   * ?
+  if (req.query.catno) {
+    req.query.catno = req.query.catno.substr(0, 12);
+    let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
+    //params.push([`rl.normalized_catno = ?`, `${req.query.catno.replace('[^a-zA-Z0-9]', '')}`]);
+    params.push([`r.id IN(select rl.release_id from release_label rl where rl.release_id = r.id and rl.normalized_catno LIKE ?)`, `${normalizedCatNo}%`])
+  }
+   */
+
+  if (req.query.text_string)
+    params.push(['rf.text_string LIKE ?', `%${req.query.text_string}%`]);
+
+  const connection = await fastify.mysql.getConnection()
+
+  let sql = `SELECT r.id, r.title, r.release_year, r.country, rl.label_name, 
+                    rl.normalized_catno, rf.text_string, rf.descriptions
+                FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
+                INNER JOIN release_format rf ON rf.release_id = r.id
+                INNER JOIN release_label rl ON rl.release_id = r.id
+                WHERE ${params.map(e => e[0]).join(' AND ')}
+                ORDER BY r.release_year DESC
+                LIMIT 100;`;
+
+  let [rows, fields] = await connection.query(
+      sql, params.map(e => e[1])
+  )
+
+  /**
+   * These are all hasMany because release CAN have multiple labels/sublabels and
+   * multiple formats in box sets.
+   */
+  if (rows.length > 0) {
+    rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id');
+    rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id');
+    rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id');
+  }
+
+  connection.release();
+
+  /**
+   * Filter "free_text" query here...
+   */
+  if (req.query.free_text) {
+    let words = req.query.free_text.split(' ');
+    // search release_identifier type="Matrix / Runout" like
+    // search release_format.text_string like
+    rows = rows.map(e => {
+      let score = 0;
+
+      // matrix
+      if (e.release_identifiers) {
+        score += scoreWordsInStrings(words, e.release_identifiers.filter(r => r.type === 'Matrix / Runout').map(r => r.value));
+      }
+
+      // formats
+      if (e.release_formats) {
+        score += scoreWordsInStrings(words, e.release_formats.filter(r => !!r.text_string).map(r => r.text_string));
+      }
+
+      e._score = score;
+    })
+
+    rows = rows.sort((a, b) => b._score - a._score);
+  }
+
+  return {data: rows}
+})
+
+function scoreWordsInStrings(words, strings) {
+  let score = 0;
+  for (const word of words) {
+    for (const string of strings) {
+      if (string.toLowerCase().indexOf(word.toLowerCase()) > -1)
+        score++;
+    }
+  }
+  return score;
 }
 
 /**
@@ -545,8 +641,6 @@ function normalizeReleaseCountries(input) {
  */
 
 fastify.get('/masters/:master_id/releases', async (req, reply) => {
-
-  const connection = await fastify.mysql.getConnection()
 
   for (const required of ['format']) {
     if (!req.query[required]) {
@@ -599,6 +693,8 @@ fastify.get('/masters/:master_id/releases', async (req, reply) => {
   if (nullYear) {
     nullYearClause = `AND r.release_year IS NULL`
   }
+
+  const connection = await fastify.mysql.getConnection()
 
   // release_year report
   const reportSql = `select count(r.id) as year_count, r.release_year as year 
