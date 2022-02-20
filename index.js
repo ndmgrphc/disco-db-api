@@ -566,10 +566,46 @@ fastify.get('/releases', async (req, reply) => {
   }
    */
 
-  if (req.query.text_string)
-    params.push(['rf.text_string LIKE ?', `%${req.query.text_string}%`]);
+  //if (req.query.text_string)
+  //  params.push(['rf.text_string LIKE ?', `%${req.query.text_string}%`]);
 
-  const connection = await fastify.mysql.getConnection()
+  const connection = await fastify.mysql.getConnection();
+
+  let performance = {};
+
+  /**
+   * if there's free_text in query we can pre-qualify releases here and score them later
+   * to eliminate chewing through releases with a score of 0.
+   */
+  let prefilterReleaseIdClause = '';
+  if (req.query.free_text) {
+    let start = process.hrtime();
+
+    let freeTextParams = [];
+    for (const w of req.query.free_text.split(' ')) {
+      freeTextParams.push([`rf.text_string LIKE ?`, `%${w}%`]);
+      freeTextParams.push([`ri.value LIKE ?`, `%${w}%`]);
+    }
+
+    let freeTextSql = `SELECT r.id
+                FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
+                INNER JOIN release_format rf ON rf.release_id = r.id
+                INNER JOIN release_label rl ON rl.release_id = r.id
+                INNER JOIN release_identifier ri ON ri.release_id = r.id
+                WHERE ${params.map(e => e[0]).join(' AND ')}
+                AND (${freeTextParams.map(e => e[0]).join(' OR ')})
+                GROUP BY r.id
+                LIMIT 200;`;
+
+    let [freeTextSqlRows] = await connection.query(
+        freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))
+    )
+
+    prefilterReleaseIdClause = `AND r.id IN (${Array.from(freeTextSqlRows).map(e => e.id)})`;
+
+    let stop = process.hrtime(start);
+    performance.preQuery = `${(stop[0] * 1e9 + stop[1])/1e9} seconds`;
+  }
 
   // rl.label_name, rl.normalized_catno, rf.text_string, rf.descriptions
   let sql = `SELECT r.id, r.title, r.release_year, r.country
@@ -577,13 +613,19 @@ fastify.get('/releases', async (req, reply) => {
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
                 WHERE ${params.map(e => e[0]).join(' AND ')}
+                ${prefilterReleaseIdClause}
                 GROUP BY r.id
-                ORDER BY r.release_year DESC
-                LIMIT 100;`;
+                ORDER BY r.release_year ASC
+                LIMIT 200;`;
+
+  let start = process.hrtime();
 
   let [rows, fields] = await connection.query(
       sql, params.map(e => e[1])
   )
+
+  let stop = process.hrtime(start);
+  performance.query = `${(stop[0] * 1e9 + stop[1])/1e9} seconds`;
 
   /**
    * These are all hasMany because release CAN have multiple labels/sublabels and
@@ -624,7 +666,7 @@ fastify.get('/releases', async (req, reply) => {
     rows = rows.filter(e => e._score > 0).sort((a, b) => b._score - a._score);
   }
 
-  return {data: rows}
+  return {data: rows, performance}
 })
 
 function scoreWordsInStrings(words, strings) {
