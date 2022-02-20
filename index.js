@@ -577,6 +577,7 @@ fastify.get('/releases', async (req, reply) => {
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
                 WHERE ${params.map(e => e[0]).join(' AND ')}
+                GROUP BY r.id
                 ORDER BY r.release_year DESC
                 LIMIT 100;`;
 
