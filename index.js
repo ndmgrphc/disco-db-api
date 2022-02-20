@@ -571,8 +571,8 @@ fastify.get('/releases', async (req, reply) => {
 
   const connection = await fastify.mysql.getConnection()
 
-  let sql = `SELECT r.id, r.title, r.release_year, r.country, rl.label_name, 
-                    rl.normalized_catno, rf.text_string, rf.descriptions
+  // rl.label_name, rl.normalized_catno, rf.text_string, rf.descriptions
+  let sql = `SELECT r.id, r.title, r.release_year, r.country
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
