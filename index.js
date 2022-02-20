@@ -617,6 +617,7 @@ fastify.get('/releases', async (req, reply) => {
       }
 
       e._score = score;
+      return e;
     })
 
     rows = rows.sort((a, b) => b._score - a._score);
