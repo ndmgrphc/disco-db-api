@@ -513,14 +513,16 @@ function normalizeRequestParams(req) {
     yearB: req.query.release_year
   })
 
-  if (req.query['release_year[]']) {
-    let normalizedReleaseYears = normalizeReleaseQueryField(req.query['release_year[]'], 'release_year');
+  let releaseYearQuery = req.query.release_year || req.query['release_year[]'];
+  if (releaseYearQuery) {
+    let normalizedReleaseYears = normalizeReleaseQueryField(releaseYearQuery, 'release_year');
     if (normalizedReleaseYears)
       params.push(normalizedReleaseYears);
   }
 
-  if (req.query['country[]']) {
-    let normalizedReleaseCountries = normalizeReleaseQueryField(req.query['country[]'], 'country');
+  let releaseCountryQuery = req.query.country || req.query['country[]'];
+  if (releaseCountryQuery) {
+    let normalizedReleaseCountries = normalizeReleaseQueryField(releaseCountryQuery, 'country');
     if (normalizedReleaseCountries)
       params.push(normalizedReleaseCountries);
   }
