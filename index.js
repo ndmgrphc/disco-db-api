@@ -508,14 +508,14 @@ function normalizeRequestParams(req) {
   if (req.query.master_year)
     params.push(['m.year = ?',req.query.master_year]);
 
-  if (req.query.release_year) {
-    let normalizedReleaseYears = normalizeReleaseQueryField(req.query.release_year, 'release_year');
+  if (req.query['release_year[]']) {
+    let normalizedReleaseYears = normalizeReleaseQueryField(req.query['release_year[]'], 'release_year');
     if (normalizedReleaseYears)
       params.push(normalizedReleaseYears);
   }
 
-  if (req.query.release_country) {
-    let normalizedReleaseCountries = normalizeReleaseQueryField(req.query.release_country, 'country');
+  if (req.query['country[]']) {
+    let normalizedReleaseCountries = normalizeReleaseQueryField(req.query['country[]'], 'country');
     if (normalizedReleaseCountries)
       params.push(normalizedReleaseCountries);
   }
@@ -529,6 +529,7 @@ function normalizeReleaseQueryField(input, field) {
   }
 
   let validValues = input.filter(e => !!e);
+
   if (!validValues || validValues.length === 0)
     return null;
 
