@@ -149,6 +149,7 @@ fastify.get('/catalog_numbers', async (req, reply) => {
   const [rows, fields] = await connection.query(
       query[0], query[1],
   )
+
   connection.release()
   return rows
 })
@@ -431,11 +432,9 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
 
   params.push([`ra.artist_id = ?`, req.params.artist_id]);
 
-  //console.log('params', params);
-
   const connection = await fastify.mysql.getConnection();
 
-  let sql = `SELECT r.title, r.release_year, r.country, rl.label_name, rl.normalized_catno, rf.text_string, count(r.id) as release_count
+  let sql = `SELECT r.title, r.release_year, r.country, rl.label_name, rl.normalized_catno, rf.text_string, count(DISTINCT r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
@@ -444,7 +443,8 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
                 ORDER BY release_count DESC
                 LIMIT 40;`;
 
-  //console.log('params', sql);
+  //let stmt = connection.format(sql, params.map(e => e[1]));
+  //console.log(stmt)
 
   const [rows, fields] = await connection.query(
       sql, params.map(e => e[1]),
@@ -452,7 +452,7 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
 
   // countries report
   const [countryRows, countryFields] = await connection.query(
-      `SELECT r.country, count(r.id) as release_count
+      `SELECT r.country, count(DISTINCT r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
@@ -464,7 +464,7 @@ fastify.get('/artists/:artist_id/format_report', async (req, reply) => {
 
   // release_year report
   const [yearRows, yearFields] = await connection.query(
-      `SELECT r.release_year, count(r.id) as release_count
+      `SELECT r.release_year, count(DISTINCT r.id) as release_count
                 FROM \`release\` r INNER JOIN release_artist ra ON r.id = ra.release_id
                 INNER JOIN release_format rf ON rf.release_id = r.id
                 INNER JOIN release_label rl ON rl.release_id = r.id
@@ -490,11 +490,10 @@ function normalizeRequestParams(req) {
 
   if (req.query.title) {
     params.push([`r.title = ?`, `${req.query.title}`]);
-  } else {
-    return validationResponse(reply, [
-      {field: 'title', error: `Field title (the exact album title) is required`}
-    ])
   }
+
+  if (req.query.text_string)
+    params.push([`rf.text_string = ?`, req.query.text_string]);
 
   if (req.query.catno) {
     let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
@@ -507,11 +506,6 @@ function normalizeRequestParams(req) {
   // TODO: ignored for now
   if (req.query.master_year)
     params.push(['m.year = ?',req.query.master_year]);
-
-  console.log('req.query[\'release_year[]\']', {
-    yearA: req.query['release_year[]'],
-    yearB: req.query.release_year
-  })
 
   let releaseYearQuery = req.query.release_year || req.query['release_year[]'];
   if (releaseYearQuery) {
