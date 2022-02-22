@@ -563,7 +563,7 @@ fastify.get('/releases', async (req, reply) => {
 
   let params = normalizeRequestParams(req);
 
-  console.log('params', params);
+  //console.log('params', params);
 
   /**
    * ?
@@ -607,7 +607,7 @@ fastify.get('/releases', async (req, reply) => {
                 GROUP BY r.id
                 LIMIT 200;`;
 
-    console.log(connection.format(freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))))
+    //console.log(connection.format(freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))))
 
     let [freeTextSqlRows] = await connection.query(
         freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))
@@ -633,6 +633,8 @@ fastify.get('/releases', async (req, reply) => {
                 GROUP BY r.id
                 ORDER BY r.release_year ASC
                 LIMIT 200;`;
+
+  //console.log(connection.format(sql, params.map(e => e[1])))
 
   let start = process.hrtime();
 
@@ -672,7 +674,7 @@ fastify.get('/releases', async (req, reply) => {
 
       // formats
       if (e.release_formats) {
-        score += scoreWordsInStrings(words, e.release_formats.filter(r => !!r.text_string).map(r => r.text_string));
+        score += scoreWordsInStrings(words, e.release_formats.filter(rf => !!rf.text_string || !!rf.descriptions).map(rf => rf.text_string +' '+ rf.descriptions));
       }
 
       e._score = score;
