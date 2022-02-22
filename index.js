@@ -492,8 +492,13 @@ function normalizeRequestParams(req) {
     params.push([`r.title = ?`, `${req.query.title}`]);
   }
 
-  if (req.query.text_string)
-    params.push([`rf.text_string = ?`, req.query.text_string]);
+  if (req.query.text_string) {
+    if (req.query.text_string === 'null') {
+      params.push([`rf.text_string = ?`, '']);
+    } else {
+      params.push([`rf.text_string = ?`, req.query.text_string]);
+    }
+  }
 
   if (req.query.catno) {
     let normalizedCatNo = req.query.catno.replace(/[^a-zA-Z0-9]+/g, '');
@@ -601,6 +606,8 @@ fastify.get('/releases', async (req, reply) => {
                 AND (${freeTextParams.map(e => e[0]).join(' OR ')})
                 GROUP BY r.id
                 LIMIT 200;`;
+
+    console.log(connection.format(freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))))
 
     let [freeTextSqlRows] = await connection.query(
         freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))
