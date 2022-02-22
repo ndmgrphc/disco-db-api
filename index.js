@@ -589,6 +589,7 @@ fastify.get('/releases', async (req, reply) => {
     for (const w of req.query.free_text.split(' ')) {
       freeTextParams.push([`rf.text_string LIKE ?`, `%${w}%`]);
       freeTextParams.push([`ri.value LIKE ?`, `%${w}%`]);
+      freeTextParams.push([`rf.descriptions LIKE ?`, `%${w}%`]);
     }
 
     let freeTextSql = `SELECT r.id
