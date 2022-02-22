@@ -508,6 +508,11 @@ function normalizeRequestParams(req) {
   if (req.query.master_year)
     params.push(['m.year = ?',req.query.master_year]);
 
+  console.log('req.query[\'release_year[]\']', {
+    yearA: req.query['release_year[]'],
+    yearB: req.query.release_year
+  })
+
   if (req.query['release_year[]']) {
     let normalizedReleaseYears = normalizeReleaseQueryField(req.query['release_year[]'], 'release_year');
     if (normalizedReleaseYears)
