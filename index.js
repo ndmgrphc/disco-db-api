@@ -557,6 +557,8 @@ fastify.get('/releases', async (req, reply) => {
 
   let params = normalizeRequestParams(req);
 
+  console.log('params', params);
+
   /**
    * ?
   if (req.query.catno) {
@@ -602,10 +604,14 @@ fastify.get('/releases', async (req, reply) => {
         freeTextSql, params.map(e => e[1]).concat(freeTextParams.map(e => e[1]))
     )
 
-    prefilterReleaseIdClause = `AND r.id IN (${Array.from(freeTextSqlRows).map(e => e.id)})`;
-
     let stop = process.hrtime(start);
     performance.preQuery = `${(stop[0] * 1e9 + stop[1])/1e9} seconds`;
+
+    if (freeTextSqlRows.length === 0)
+      return {data: [], performance};
+
+    prefilterReleaseIdClause = `AND r.id IN (${Array.from(freeTextSqlRows).map(e => e.id).join(',')})`;
+
   }
 
   // rl.label_name, rl.normalized_catno, rf.text_string, rf.descriptions
