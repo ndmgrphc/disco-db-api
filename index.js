@@ -245,6 +245,8 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
     ])
   }
 
+  let debug = !!req.query.debug;
+
   const connection = await fastify.mysql.getConnection()
 
   /**
@@ -254,14 +256,22 @@ fastify.get('/tracks/:release_id', async (req, reply) => {
    * from release_track rt left outer join release_track_artist rta on rt.id = rta.track_id_int
    * where (rta.role = '' OR rta.role IS NULL) and rt.release_id = 1939822;
    */
+
+  if (debug)
+    console.log(await connection.format(`select * from release_track where release_id = ? and position != '' and sequence is not null order by sequence;`, [req.params.release_id]));
+
   const [trackRows, trackFields] = await connection.query(
       `select * from release_track where release_id = ? and position != '' and sequence is not null order by sequence;`, [req.params.release_id]
   );
+
+  if (debug)
+    console.log(await connection.format(`select * from release_track_artist where track_id_int IN (?);`, [trackRows.map(e => e.id)]));
 
   //select * from release_track_artist where track_id_int IN (23384742, 23384741, 23384740, 23384739)
   const [artistRows, artistFields] = await connection.query(
       `select * from release_track_artist where track_id_int IN (?);`, [trackRows.map(e => e.id)]
   );
+
 
   let artistRowsByTrackId = artistRows.reduce((a, e) => {
     /**
