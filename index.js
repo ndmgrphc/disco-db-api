@@ -845,12 +845,32 @@ fastify.get('/releases/:id', async (req, reply) => {
   if (artistRows[0])
     rows[0].artist = artistRows[0];
 
-  rows[0].artists =  Array.from(artistRows).map(e => {
+  //console.log(Array.from(artistRows));
+  /**
+   * Can be "Various" etc.
+   * @type {{name: *, id: *}[]}
+   */
+  rows[0].artists = Array.from(artistRows).map(e => {
     return {
-      id: e.artist_id,
-      name: e.artist_name
+      id: e.id,
+      name: e.name
     };
   })
+
+  const releaseTracks = await getReleaseTracks(connection, req.params.id);
+  rows[0].track_artists = !releaseTracks ? [] :
+      releaseTracks.reduce((a, e) => {
+        if (!e.artist)
+          return a;
+
+        const artistId = e.artist.id;
+        if (a.find(ea => ea.id === artistId))
+          return a;
+
+        a.push({id: artistId, name: e.artist.name});
+
+        return a;
+      }, []);
 
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
@@ -861,7 +881,42 @@ fastify.get('/releases/:id', async (req, reply) => {
   connection.release()
 
   return rows[0]
-})
+});
+
+async function getReleaseTracks(connection, releaseId) {
+  const [trackRows, trackFields] = await connection.query(
+      `select * from release_track where release_id = ? and position != '' and sequence is not null order by sequence;`, [releaseId]
+  );
+
+  //select * from release_track_artist where track_id_int IN (23384742, 23384741, 23384740, 23384739)
+  const [artistRows, artistFields] = await connection.query(
+      `select * from release_track_artist where track_id_int IN (?);`, [trackRows.map(e => e.id)]
+  );
+
+  let artistRowsByTrackId = artistRows.reduce((a, e) => {
+    /**
+     * We need records without a role, these are actual artist records on compilations
+     */
+    if (!!e.role)
+      return a;
+
+    if (a[e.track_id])
+      return a;
+
+    a[e.track_id] = {
+      id: e.artist_id,
+      name: e.artist_name
+    }
+
+    return a;
+  }, {});
+
+  trackRows.forEach(e => {
+    e.artist = artistRowsByTrackId[e.id] ? artistRowsByTrackId[e.id] : null
+  });
+
+  return trackRows;
+}
 
 async function eagerLoad(connection, parentRows, table, foreignKey) {
   let ids = parentRows.map(e => e.id);
