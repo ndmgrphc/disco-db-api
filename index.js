@@ -845,6 +845,13 @@ fastify.get('/releases/:id', async (req, reply) => {
   if (artistRows[0])
     rows[0].artist = artistRows[0];
 
+  rows[0].artists =  Array.from(artistRows).map(e => {
+    return {
+      id: e.artist_id,
+      name: e.artist_name
+    };
+  })
+
   rows = await eagerLoad(connection, Array.from(rows), 'release_identifier', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_label', 'release_id')
   rows = await eagerLoad(connection, Array.from(rows), 'release_format', 'release_id')
