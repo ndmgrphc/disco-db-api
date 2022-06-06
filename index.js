@@ -549,7 +549,7 @@ function normalizeReleaseQueryField(input, field) {
   if (!validValues || validValues.length === 0)
     return null;
 
-  if (input.indexOf(null) > -1 || input.indexOf('null') || input.indexOf('') > -1) {
+  if (input.indexOf(null) > -1 || input.indexOf('null') > -1 || input.indexOf('') > -1) {
     return [`(r.${field} is null OR r.${field} IN (?))`, validValues];
   } else {
     return [`r.${field} IN (?)`, validValues];
