@@ -11,6 +11,7 @@
     "dotenv": "^8.2.0",
     "fastify": "^3.14.0",
     "fastify-mysql": "^2.1.0",
+    "@fastify/cors": "^7.0.0",
     "https-proxy-agent": "^5.0.0",
     "qs": "^6.10.1",
     "tough-cookie": "^4.0.0"

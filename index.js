@@ -13,7 +13,14 @@ const scogger = new Scogger({
 
 const VALID_FORMATS = ['Vinyl', 'CD', 'Cassette', '8-Track Cartridge', 'Reel-to-Reel']
 
-const fastify = require('fastify')()
+const fastify = require('fastify')();
+
+fastify.register(require('@fastify/cors'), {
+  origin: true,
+  methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+})
 
 fastify.register(require('fastify-mysql'), {
   promise: true,
