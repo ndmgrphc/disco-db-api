@@ -511,7 +511,7 @@ function normalizeRequestParams(req) {
 
   if (req.query.text_string) {
     if (req.query.text_string === 'null') {
-      params.push([`rf.text_string = ?`, '']);
+      params.push([`(rf.text_string = ? OR rf.text_string is null)`, '']);
     } else {
       params.push([`rf.text_string = ?`, req.query.text_string]);
     }
