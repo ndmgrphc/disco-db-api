@@ -909,6 +909,14 @@ async function getReleaseTracks(connection, releaseId) {
       currentSection = e.title;
       return a;
     }
+
+    // no letter in position means not analog media?
+    // TODO: accommodate this for CDs etc in future?
+    if (!e.position.match(/[A-Z]/)) {
+      trackSequence++;
+      return a;
+    }
+
     if (e.position.match(/^[A-Z]$/)) {
       // just a letter, A -> "A1", B -> "B1"
       e.position = `${e.position}1`
