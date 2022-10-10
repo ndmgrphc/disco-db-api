@@ -914,6 +914,7 @@ async function getReleaseTracks(connection, releaseId) {
       e.position = `${e.position}1`
     }
 
+    e.section = currentSection;
     e.sequence = trackSequence;
     trackSequence++;
 
