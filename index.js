@@ -11,6 +11,7 @@ const scogger = new Scogger({
   }
 });
 
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const VALID_FORMATS = ['Vinyl', 'CD', 'Cassette', '8-Track Cartridge', 'Reel-to-Reel']
 
 const fastify = require('fastify')();
@@ -891,13 +892,38 @@ fastify.get('/releases/:id', async (req, reply) => {
 });
 
 async function getReleaseTracks(connection, releaseId) {
+  /**
+   * Removed: and position != ''
+   *
+   * sequence is critical and we need to walk through the results and figure out what belongs where.
+   * We are now providing side
+   */
   const [trackRows, trackFields] = await connection.query(
-      `select * from release_track where release_id = ? and position != '' and sequence is not null order by sequence;`, [releaseId]
+      `select * from release_track where release_id = ? and sequence is not null order by sequence;`, [releaseId]
   );
+
+  let currentSection = null;
+  let trackSequence = 1;
+  let sectionedTracks = trackRows.reduce((a, e) => {
+    if (!e.position && e.title) {
+      currentSection = e.title;
+      return a;
+    }
+    if (e.position.match(/^[A-Z]$/)) {
+      // just a letter, A -> "A1", B -> "B1"
+      e.position = `${e.position}1`
+    }
+
+    e.sequence = trackSequence;
+    trackSequence++;
+
+    a.push(e);
+    return a;
+  }, []);
 
   //select * from release_track_artist where track_id_int IN (23384742, 23384741, 23384740, 23384739)
   const [artistRows, artistFields] = await connection.query(
-      `select * from release_track_artist where track_id_int IN (?);`, [trackRows.map(e => e.id)]
+      `select * from release_track_artist where track_id_int IN (?);`, [sectionedTracks.map(e => e.id)]
   );
 
   let artistRowsByTrackId = artistRows.reduce((a, e) => {
@@ -918,11 +944,11 @@ async function getReleaseTracks(connection, releaseId) {
     return a;
   }, {});
 
-  trackRows.forEach(e => {
+  sectionedTracks.forEach(e => {
     e.artist = artistRowsByTrackId[e.id] ? artistRowsByTrackId[e.id] : null
   });
 
-  return trackRows;
+  return sectionedTracks;
 }
 
 async function eagerLoad(connection, parentRows, table, foreignKey) {
