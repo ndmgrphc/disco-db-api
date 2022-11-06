@@ -126,6 +126,8 @@ fastify.get('/catalog_numbers', async (req, reply) => {
   if (req.query.search)
     req.query.search = req.query.search.replace(/[^a-zA-Z0-9]+/g,"").substr(0, 12);
 
+  let debug = !!req.query.debug;
+
   for (const required of ['format', 'search']) {
     if (!req.query[required]) {
       return validationResponse(reply, [
@@ -151,6 +153,11 @@ fastify.get('/catalog_numbers', async (req, reply) => {
     GROUP BY r.master_id, ra.artist_id, r.title, rl.normalized_catno, rl.label_name
     ORDER BY release_count DESC
     LIMIT 25;`;
+
+  if (debug) {
+    console.log(sql);
+    console.log(req.query.format, `${req.query.search}%`);
+  }
 
   let query = [sql, [req.query.format, `${req.query.search}%`]];
 
