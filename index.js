@@ -337,10 +337,12 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
   );
 
   if (req.query.debugPrefetch) {
+    connection.release();
     return [prefetchSql.replace("\n", ""), prefetchParams.map(e => e[1]), prefetchRows.map(e => e.master_id)];
   }
   
   if (prefetchRows.length === 0) {
+    connection.release();
     return {report: [], data: []}
   }
 
@@ -358,6 +360,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
 
   //return [reportSql, params.map(e => e[1])];
   if (req.query.debugReport) {
+    connection.release();
     return [reportSql, params.map(e => e[1])];
   }
 
@@ -371,7 +374,7 @@ fastify.get('/artists/:artist_id/masters', async (req, reply) => {
     sql, params.map(e => e[1]),
   )
 
-  connection.release()
+  connection.release();
 
   return {report: reportRows, data: rows}
 })
@@ -605,8 +608,10 @@ fastify.get('/releases', async (req, reply) => {
     let stop = process.hrtime(start);
     performance.preQuery = `${(stop[0] * 1e9 + stop[1])/1e9} seconds`;
 
-    if (freeTextSqlRows.length === 0)
+    if (freeTextSqlRows.length === 0) {
+      connection.release();
       return {data: [], performance};
+    }
 
     prefilterReleaseIdClause = `AND r.id IN (${Array.from(freeTextSqlRows).map(e => e.id).join(',')})`;
 
